@@ -49,9 +49,11 @@ export default function MusorokLanding() {
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0f1011]/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
           <div className="flex items-center gap-3">
-            <div className="rounded-2xl border border-white/10 bg-white px-3 py-1 text-2xl font-black uppercase tracking-tight text-black">
-              МусорОК
-            </div>
+            <img
+  		src="/musorok-logo.png"
+  		alt="МусорОК"
+  		className="h-10 w-auto"
+		/>
             <span className="hidden text-sm text-white/60 md:block">Сервис выноса мусора по кнопке</span>
           </div>
           <nav className="hidden items-center gap-6 text-sm text-white/75 md:flex">
@@ -263,8 +265,8 @@ export default function MusorokLanding() {
 
       <footer className="border-t border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-8 text-sm text-white/45 md:flex-row md:items-center md:justify-between lg:px-8">
-          <p>© МусорОК — первая итерация лендинга</p>
-          <p>Сделано в чёрно-белом стиле под ваш логотип</p>
+          <p>© МусорОК — мусор это просто</p>
+          <p>powered by TION</p>
         </div>
       </footer>
     </div>
