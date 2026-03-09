@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
 
 declare global {
   interface Window {
@@ -13,11 +14,26 @@ const YANDEX_MAPS_API_KEY =
     ? process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY
     : undefined;
 
+const SUPABASE_URL =
+  typeof process !== "undefined" && process.env
+    ? process.env.NEXT_PUBLIC_SUPABASE_URL
+    : undefined;
+
+const SUPABASE_ANON_KEY =
+  typeof process !== "undefined" && process.env
+    ? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    : undefined;
+
+const supabase =
+  SUPABASE_URL && SUPABASE_ANON_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
 type YesNo = "yes" | "no";
 type PaymentMethod = "card" | "cash" | "sbp";
 type AddressMode = "map" | "manual";
-type OrderStep = 1 | 2;
-type TipAmount = 0 | 50 | 100;
+type OrderStep = 1 | 2 | 3;
+type TipAmount = number;
 
 type PriceOption = {
   id: string;
@@ -108,7 +124,9 @@ function Header() {
     <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0f1011]/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
         <div className="flex items-center gap-3">
-          <img src="/musorok-logo-removebg-preview.png" alt="МусорОК" className="h-8 w-auto" />
+          <a href="#top" className="flex items-center">
+            <img src="/musorok-logo-removebg-preview.png" alt="МусорОК" className="h-8 w-auto cursor-pointer" />
+          </a>
           <span className="hidden text-sm text-white/60 md:block">Сервис выноса мусора в Краснодаре</span>
         </div>
         <nav className="hidden items-center gap-6 text-sm text-white/75 md:flex">
@@ -140,11 +158,13 @@ function StepOne({
   selectedPackageId,
   setSelectedPackageId,
   selectedPrice,
+  addressSelected,
   onContinue,
 }: {
   selectedPackageId: string;
   setSelectedPackageId: (value: string) => void;
   selectedPrice: PriceOption;
+  addressSelected: boolean;
   onContinue: () => void;
 }) {
   return (
@@ -157,7 +177,10 @@ function StepOne({
               <button
                 key={item.id}
                 type="button"
-                onClick={() => setSelectedPackageId(item.id)}
+                onClick={() => {
+                  setSelectedPackageId(item.id);
+                  document.getElementById("top")?.scrollIntoView({ behavior: "smooth" });
+                }}
                 className={`rounded-2xl border px-3 py-2.5 text-left text-sm font-medium transition duration-200 hover:scale-[1.02] active:scale-[0.98] ${
                   selectedPackageId === item.id
                     ? "border-white bg-white text-black shadow-[0_0_0_1px_rgba(255,255,255,0.25)]"
@@ -180,7 +203,12 @@ function StepOne({
       <button
         type="button"
         onClick={onContinue}
-        className="mt-4 w-full rounded-2xl bg-white px-5 py-3.5 font-bold text-black transition hover:scale-[1.01]"
+        disabled={!selectedPackageId || !addressSelected}
+        className={`mt-4 w-full rounded-2xl px-5 py-3.5 font-bold transition ${
+          !selectedPackageId || !addressSelected
+            ? "bg-white/30 text-black/50 cursor-not-allowed"
+            : "bg-white text-black hover:scale-[1.01]"
+        }`}
       >
         Продолжить
       </button>
@@ -195,17 +223,14 @@ function StepTwo({
   leaveAtDoor,
   phone,
   shouldCall,
-  paymentMethod,
-  tip,
   setApartment,
   setEntrance,
   setComment,
   setLeaveAtDoor,
   setPhone,
   setShouldCall,
-  setPaymentMethod,
-  setTip,
   onBack,
+  onContinue,
 }: {
   apartment: string;
   entrance: string;
@@ -213,17 +238,14 @@ function StepTwo({
   leaveAtDoor: YesNo;
   phone: string;
   shouldCall: YesNo;
-  paymentMethod: PaymentMethod;
-  tip: TipAmount;
   setApartment: (value: string) => void;
   setEntrance: (value: string) => void;
   setComment: (value: string) => void;
   setLeaveAtDoor: (value: YesNo) => void;
   setPhone: (value: string) => void;
   setShouldCall: (value: YesNo) => void;
-  setPaymentMethod: (value: PaymentMethod) => void;
-  setTip: (value: TipAmount) => void;
   onBack: () => void;
+  onContinue: () => void;
 }) {
   return (
     <div>
@@ -260,16 +282,16 @@ function StepTwo({
           />
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4 sm:col-span-1">
-            <p className="text-sm text-white/50">Оставить у двери?</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4">
+            <p className="text-sm text-white/50">Забрать у двери?</p>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <ToggleButton active={leaveAtDoor === "yes"} onClick={() => setLeaveAtDoor("yes")}>Да</ToggleButton>
               <ToggleButton active={leaveAtDoor === "no"} onClick={() => setLeaveAtDoor("no")}>Нет</ToggleButton>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4 sm:col-span-2">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4">
             <p className="text-sm text-white/50">Телефон для связи</p>
             <input
               value={phone}
@@ -282,26 +304,6 @@ function StepTwo({
               <ToggleButton active={shouldCall === "no"} onClick={() => setShouldCall("no")}>Не звонить</ToggleButton>
             </div>
           </div>
-
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4 sm:col-span-3">
-            <p className="text-sm text-white/50">Способ оплаты</p>
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              <ToggleButton active={paymentMethod === "card"} onClick={() => setPaymentMethod("card")}>Картой</ToggleButton>
-              <ToggleButton active={paymentMethod === "cash"} onClick={() => setPaymentMethod("cash")}>Наличные</ToggleButton>
-              <ToggleButton active={paymentMethod === "sbp"} onClick={() => setPaymentMethod("sbp")}>СБП</ToggleButton>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4">
-          <p className="text-sm text-white/50">Чаевые</p>
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            {[0, 50, 100].map((value) => (
-              <ToggleButton key={value} active={tip === value} onClick={() => setTip(value as TipAmount)}>
-                {value === 0 ? "Без чаевых" : `${value} ₽`}
-              </ToggleButton>
-            ))}
-          </div>
         </div>
       </div>
 
@@ -313,10 +315,135 @@ function StepTwo({
         >
           Назад
         </button>
-        <button className="rounded-2xl bg-white px-5 py-3.5 font-bold text-black transition hover:scale-[1.01]">
-          Заберите мусор
+        <button
+          type="button"
+          onClick={onContinue}
+          className="rounded-2xl bg-white px-5 py-3.5 font-bold text-black transition hover:scale-[1.01]"
+        >
+          К оплате
         </button>
       </div>
+    </div>
+  );
+}
+
+function StepThree({
+  paymentMethod,
+  tip,
+  customTip,
+  total,
+  packageLabel,
+  apartment,
+  entrance,
+  isSubmitting,
+  submitError,
+  submitSuccess,
+  onSubmit,
+  setPaymentMethod,
+  setTip,
+  setCustomTip,
+  onBack,
+}: {
+  paymentMethod: PaymentMethod;
+  tip: TipAmount;
+  customTip: string;
+  total: number;
+  packageLabel: string;
+  apartment: string;
+  entrance: string;
+  isSubmitting: boolean;
+  submitError: string;
+  submitSuccess: string;
+  onSubmit: () => void;
+  setPaymentMethod: (value: PaymentMethod) => void;
+  setTip: (value: TipAmount) => void;
+  setCustomTip: (value: string) => void;
+  onBack: () => void;
+}) {
+  const presetTips = [0, 50, 100];
+
+  return (
+    <div>
+      <div className="grid gap-3">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4">
+          <p className="text-sm text-white/50">Ваш заказ</p>
+          <div className="mt-3 space-y-1 text-sm text-white/80">
+            {apartment && <p>кв. {apartment}</p>}
+            {entrance && <p>подъезд {entrance}</p>}
+            <p>{packageLabel}</p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4">
+          <p className="text-sm text-white/50">Способ оплаты</p>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <ToggleButton active={paymentMethod === "card"} onClick={() => setPaymentMethod("card")}>Картой</ToggleButton>
+            <ToggleButton active={paymentMethod === "cash"} onClick={() => setPaymentMethod("cash")}>Наличные</ToggleButton>
+            <ToggleButton active={paymentMethod === "sbp"} onClick={() => setPaymentMethod("sbp")}>СБП</ToggleButton>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4">
+          <p className="text-sm text-white/50">Чаевые</p>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {presetTips.map((value) => (
+              <ToggleButton
+                key={value}
+                active={tip === value && customTip === ""}
+                onClick={() => {
+                  setCustomTip("");
+                  setTip(value);
+                }}
+              >
+                {value === 0 ? "Без чаевых" : `${value} ₽`}
+              </ToggleButton>
+            ))}
+          </div>
+          <div className="mt-3">
+            <input
+              value={customTip}
+              onChange={(e) => {
+                const value = e.target.value.replace(/[^0-9]/g, "");
+                setCustomTip(value);
+                setTip(value ? Number(value) : 0);
+              }}
+              placeholder="Своя сумма чаевых"
+              className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white placeholder:text-white/35 outline-none transition focus:border-white/25"
+            />
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-white p-4 text-black">
+          <p className="text-sm text-black/45">Итого</p>
+          <p className="mt-2 text-4xl font-black">{total} ₽</p>
+          <p className="mt-2 text-sm text-black/60">Стоимость заказа с учетом чаевых</p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3.5 font-semibold text-white transition hover:bg-white/10"
+        >
+          Назад
+        </button>
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={isSubmitting}
+          className={`rounded-2xl px-5 py-3.5 font-bold transition ${
+            isSubmitting
+              ? "bg-white/40 text-black/50 cursor-not-allowed"
+              : "bg-white text-black hover:scale-[1.01]"
+          }`}
+        >
+          {isSubmitting ? "Сохраняем заказ..." : "Оплатить"}
+        </button>
+      </div>
+
+      {submitError && <p className="mt-3 text-sm text-red-300">{submitError}</p>}
+      {submitSuccess && <p className="mt-3 text-sm text-green-300">{submitSuccess}</p>}
     </div>
   );
 }
@@ -331,8 +458,8 @@ function AddressSelector({
   setManualAddress,
   mapStatus,
   mapContainerRef,
-  draftMapAddress,
   setSelectedMapAddress,
+  setDraftMapAddress,
 }: {
   isAddressOpen: boolean;
   setIsAddressOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -343,8 +470,8 @@ function AddressSelector({
   setManualAddress: (value: string) => void;
   mapStatus: "idle" | "loading" | "ready" | "error" | "fallback";
   mapContainerRef: React.RefObject<HTMLDivElement | null>;
-  draftMapAddress: string;
   setSelectedMapAddress: (value: string) => void;
+  setDraftMapAddress: (value: string) => void;
 }) {
   return (
     <div>
@@ -401,7 +528,11 @@ function AddressSelector({
                       </p>
                       <button
                         type="button"
-                        onClick={() => setSelectedMapAddress("Краснодар, ул. Красная, 176")}
+                        onClick={() => {
+                          setDraftMapAddress("Краснодар, ул. Красная, 176");
+                          setSelectedMapAddress("Краснодар, ул. Красная, 176");
+                          setIsAddressOpen(false);
+                        }}
                         className="mt-5 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium transition hover:bg-white/10"
                       >
                         Выбрать тестовый адрес
@@ -415,34 +546,10 @@ function AddressSelector({
 
               <p className="mt-3 text-sm text-white/45">
                 {mapStatus === "loading" && "Загружаем карту Краснодара..."}
-                {mapStatus === "ready" && "Кликните по карте, чтобы выбрать дом, потом нажмите «Выбрать адрес»."}
+                {mapStatus === "ready" && "Кликните по карте, чтобы сразу выбрать адрес."}
                 {mapStatus === "error" && "Карта не загрузилась. Проверьте API-ключ и перезапустите проект."}
                 {mapStatus === "fallback" && "В preview показывается аккуратная заглушка, а на живом сайте — настоящая карта."}
               </p>
-
-              <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
-                <p className="text-sm text-white/50">Выбранный адрес</p>
-                <p className="mt-1 font-medium">{draftMapAddress}</p>
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedMapAddress(draftMapAddress);
-                      setIsAddressOpen(false);
-                    }}
-                    className="rounded-2xl bg-white px-4 py-3 text-sm font-bold text-black transition hover:scale-[1.01]"
-                  >
-                    Выбрать адрес
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsAddressOpen(false)}
-                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold transition hover:bg-white/10"
-                  >
-                    Закрыть
-                  </button>
-                </div>
-              </div>
             </div>
           ) : (
             <input
@@ -468,8 +575,8 @@ function OrderCard({
   setManualAddress,
   mapStatus,
   mapContainerRef,
-  draftMapAddress,
   setSelectedMapAddress,
+  setDraftMapAddress,
   selectedPackageId,
   setSelectedPackageId,
   selectedPrice,
@@ -483,6 +590,12 @@ function OrderCard({
   shouldCall,
   paymentMethod,
   tip,
+  customTip,
+  total,
+  isSubmitting,
+  submitError,
+  submitSuccess,
+  onSubmit,
   setApartment,
   setEntrance,
   setComment,
@@ -491,6 +604,7 @@ function OrderCard({
   setShouldCall,
   setPaymentMethod,
   setTip,
+  setCustomTip,
 }: {
   isAddressOpen: boolean;
   setIsAddressOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -501,8 +615,8 @@ function OrderCard({
   setManualAddress: (value: string) => void;
   mapStatus: "idle" | "loading" | "ready" | "error" | "fallback";
   mapContainerRef: React.RefObject<HTMLDivElement | null>;
-  draftMapAddress: string;
   setSelectedMapAddress: (value: string) => void;
+  setDraftMapAddress: (value: string) => void;
   selectedPackageId: string;
   setSelectedPackageId: (value: string) => void;
   selectedPrice: PriceOption;
@@ -516,6 +630,12 @@ function OrderCard({
   shouldCall: YesNo;
   paymentMethod: PaymentMethod;
   tip: TipAmount;
+  customTip: string;
+  total: number;
+  isSubmitting: boolean;
+  submitError: string;
+  submitSuccess: string;
+  onSubmit: () => void;
   setApartment: (value: string) => void;
   setEntrance: (value: string) => void;
   setComment: (value: string) => void;
@@ -524,6 +644,7 @@ function OrderCard({
   setShouldCall: (value: YesNo) => void;
   setPaymentMethod: (value: PaymentMethod) => void;
   setTip: (value: TipAmount) => void;
+  setCustomTip: (value: string) => void;
 }) {
   return (
     <div className="relative lg:flex lg:justify-end">
@@ -531,28 +652,31 @@ function OrderCard({
         <div className="rounded-[1.75rem] border border-[#2c3807]/40 bg-[#1a2105] p-3 lg:h-full lg:overflow-hidden lg:p-4">
           <div className="mt-1 rounded-3xl border border-white/10 bg-[#17181a] p-3 lg:h-full lg:overflow-y-auto lg:p-4">
             <div className="space-y-3">
-              <AddressSelector
-                isAddressOpen={isAddressOpen}
-                setIsAddressOpen={setIsAddressOpen}
-                addressMode={addressMode}
-                setAddressMode={setAddressMode}
-                addressLabel={addressLabel}
-                manualAddress={manualAddress}
-                setManualAddress={setManualAddress}
-                mapStatus={mapStatus}
-                mapContainerRef={mapContainerRef}
-                draftMapAddress={draftMapAddress}
-                setSelectedMapAddress={setSelectedMapAddress}
-              />
+              {orderStep === 1 && (
+                <AddressSelector
+                  isAddressOpen={isAddressOpen}
+                  setIsAddressOpen={setIsAddressOpen}
+                  addressMode={addressMode}
+                  setAddressMode={setAddressMode}
+                  addressLabel={addressLabel}
+                  manualAddress={manualAddress}
+                  setManualAddress={setManualAddress}
+                  mapStatus={mapStatus}
+                  mapContainerRef={mapContainerRef}
+                  setSelectedMapAddress={setSelectedMapAddress}
+                  setDraftMapAddress={setDraftMapAddress}
+                />
+              )}
 
               {orderStep === 1 ? (
                 <StepOne
                   selectedPackageId={selectedPackageId}
                   setSelectedPackageId={setSelectedPackageId}
                   selectedPrice={selectedPrice}
+                  addressSelected={addressLabel !== "Краснодар, выберите точку на карте"}
                   onContinue={() => setOrderStep(2)}
                 />
-              ) : (
+              ) : orderStep === 2 ? (
                 <StepTwo
                   apartment={apartment}
                   entrance={entrance}
@@ -560,17 +684,32 @@ function OrderCard({
                   leaveAtDoor={leaveAtDoor}
                   phone={phone}
                   shouldCall={shouldCall}
-                  paymentMethod={paymentMethod}
-                  tip={tip}
                   setApartment={setApartment}
                   setEntrance={setEntrance}
                   setComment={setComment}
                   setLeaveAtDoor={setLeaveAtDoor}
                   setPhone={setPhone}
                   setShouldCall={setShouldCall}
+                  onBack={() => setOrderStep(1)}
+                  onContinue={() => setOrderStep(3)}
+                />
+              ) : (
+                <StepThree
+                  paymentMethod={paymentMethod}
+                  tip={tip}
+                  customTip={customTip}
+                  total={total}
+                  packageLabel={selectedPrice.desc}
+                  apartment={apartment}
+                  entrance={entrance}
+                  isSubmitting={isSubmitting}
+                  submitError={submitError}
+                  submitSuccess={submitSuccess}
+                  onSubmit={onSubmit}
                   setPaymentMethod={setPaymentMethod}
                   setTip={setTip}
-                  onBack={() => setOrderStep(1)}
+                  setCustomTip={setCustomTip}
+                  onBack={() => setOrderStep(2)}
                 />
               )}
             </div>
@@ -582,6 +721,7 @@ function OrderCard({
 }
 
 export default function Home() {
+  const [showTopButton, setShowTopButton] = useState(false);
   const [isAddressOpen, setIsAddressOpen] = useState(false);
   const [addressMode, setAddressMode] = useState<AddressMode>("map");
   const [manualAddress, setManualAddress] = useState("");
@@ -597,7 +737,11 @@ export default function Home() {
   const [shouldCall, setShouldCall] = useState<YesNo>("yes");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [tip, setTip] = useState<TipAmount>(0);
+  const [customTip, setCustomTip] = useState("");
   const [mapStatus, setMapStatus] = useState<"idle" | "loading" | "ready" | "error" | "fallback">("idle");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [submitSuccess, setSubmitSuccess] = useState("");
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -608,9 +752,60 @@ export default function Home() {
     return prices.find((item) => item.id === selectedPackageId) ?? prices[1];
   }, [selectedPackageId]);
 
+  const total = useMemo(() => selectedPrice.price + tip, [selectedPrice.price, tip]);
+
   const addressLabel = addressMode === "manual"
     ? manualAddress || "Введите адрес вручную"
     : selectedMapAddress;
+
+  const handleCreateOrder = async () => {
+    setSubmitError("");
+    setSubmitSuccess("");
+
+    if (!supabase) {
+      setSubmitError("Supabase не подключен. Добавьте переменные окружения и перезапустите проект.");
+      return;
+    }
+
+    if (!addressLabel || addressLabel === "Краснодар, выберите точку на карте") {
+      setSubmitError("Сначала выберите адрес.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const { error } = await supabase.from("orders").insert({
+      address: addressLabel,
+      package_id: selectedPackageId,
+      package_label: selectedPrice.desc,
+      package_price: selectedPrice.price,
+      apartment,
+      entrance,
+      comment,
+      leave_at_door: leaveAtDoor === "yes",
+      phone,
+      should_call: shouldCall === "yes",
+      payment_method: paymentMethod,
+      tip,
+      total,
+    });
+
+    setIsSubmitting(false);
+
+    if (error) {
+      setSubmitError(error.message);
+      return;
+    }
+
+    setSubmitSuccess("Заказ создан. Теперь его можно взять в таблице orders в Supabase.");
+    setOrderStep(1);
+  };
+
+  useEffect(() => {
+    const handleScroll = () => setShowTopButton(window.scrollY > 400);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     if (!isAddressOpen || addressMode !== "map") return;
@@ -658,14 +853,19 @@ export default function Home() {
             .geocode(coords)
             .then((result: any) => {
               const firstGeoObject = result.geoObjects.get(0);
-              if (firstGeoObject) {
-                setDraftMapAddress(firstGeoObject.getAddressLine());
-              } else {
-                setDraftMapAddress(`Краснодар, ${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`);
-              }
+              const address = firstGeoObject
+                ? firstGeoObject.getAddressLine()
+                : `Краснодар, ${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`;
+
+              setDraftMapAddress(address);
+              setSelectedMapAddress(address);
+              setIsAddressOpen(false);
             })
             .catch(() => {
-              setDraftMapAddress(`Краснодар, ${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`);
+              const address = `Краснодар, ${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`;
+              setDraftMapAddress(address);
+              setSelectedMapAddress(address);
+              setIsAddressOpen(false);
             });
         });
       });
@@ -695,7 +895,7 @@ export default function Home() {
   }, [addressMode, isAddressOpen]);
 
   return (
-    <div className="min-h-screen bg-[#0f1011] text-white">
+    <div id="top" className="min-h-screen bg-[#0f1011] text-white">
       <Header />
 
       <main>
@@ -713,8 +913,8 @@ export default function Home() {
               setManualAddress={setManualAddress}
               mapStatus={mapStatus}
               mapContainerRef={mapContainerRef}
-              draftMapAddress={draftMapAddress}
               setSelectedMapAddress={setSelectedMapAddress}
+              setDraftMapAddress={setDraftMapAddress}
               selectedPackageId={selectedPackageId}
               setSelectedPackageId={setSelectedPackageId}
               selectedPrice={selectedPrice}
@@ -728,6 +928,12 @@ export default function Home() {
               shouldCall={shouldCall}
               paymentMethod={paymentMethod}
               tip={tip}
+              customTip={customTip}
+              total={total}
+              isSubmitting={isSubmitting}
+              submitError={submitError}
+              submitSuccess={submitSuccess}
+              onSubmit={handleCreateOrder}
               setApartment={setApartment}
               setEntrance={setEntrance}
               setComment={setComment}
@@ -736,6 +942,7 @@ export default function Home() {
               setShouldCall={setShouldCall}
               setPaymentMethod={setPaymentMethod}
               setTip={setTip}
+              setCustomTip={setCustomTip}
             />
           </div>
         </section>
@@ -773,7 +980,11 @@ export default function Home() {
                   <p className={`mt-3 ${selectedPackageId === item.id ? "text-black/65" : "text-white/65"}`}>{item.desc}</p>
                   <button
                     type="button"
-                    onClick={() => setSelectedPackageId(item.id)}
+                    onClick={() => {
+                      setSelectedPackageId(item.id);
+                      setOrderStep(1);
+                      document.getElementById("top")?.scrollIntoView({ behavior: "smooth" });
+                    }}
                     className={`mt-8 w-full rounded-2xl px-4 py-3 font-semibold transition duration-200 hover:scale-[1.02] active:scale-[0.98] ${
                       selectedPackageId === item.id
                         ? "border border-black/10 bg-black text-white hover:opacity-90"
@@ -860,6 +1071,22 @@ export default function Home() {
           <p>powered by TION</p>
         </div>
       </footer>
+
+      <button
+        onClick={() => document.getElementById("top")?.scrollIntoView({ behavior: "smooth" })}
+        className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#2c3807] px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:scale-105 md:hidden"
+      >
+        Заказать вынос мусора
+      </button>
+
+      {showTopButton && (
+        <button
+          onClick={() => document.getElementById("top")?.scrollIntoView({ behavior: "smooth" })}
+          className="fixed bottom-6 right-6 z-50 rounded-full bg-white px-4 py-3 text-sm font-bold text-black shadow-lg transition hover:scale-105"
+        >
+          ↑ Наверх
+        </button>
+      )}
     </div>
   );
 }
