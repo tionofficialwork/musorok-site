@@ -8,7 +8,10 @@ declare global {
   }
 }
 
-const YANDEX_MAPS_API_KEY = process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY;
+const YANDEX_MAPS_API_KEY =
+  typeof process !== "undefined" && process.env
+    ? process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY
+    : undefined;
 
 export default function Home() {
   const steps = [
@@ -60,8 +63,14 @@ export default function Home() {
   const [addressMode, setAddressMode] = useState<"map" | "manual">("map");
   const [manualAddress, setManualAddress] = useState("");
   const [selectedMapAddress, setSelectedMapAddress] = useState("Краснодар, выберите точку на карте");
+  const [draftMapAddress, setDraftMapAddress] = useState("Краснодар, выберите точку на карте");
   const [selectedPackageId, setSelectedPackageId] = useState("2-3");
-  const [mapStatus, setMapStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [apartment, setApartment] = useState("");
+  const [comment, setComment] = useState("");
+  const [shouldCall, setShouldCall] = useState<"yes" | "no">("yes");
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "cash" | "sbp">("card");
+  const [tip, setTip] = useState<0 | 50 | 100>(0);
+  const [mapStatus, setMapStatus] = useState<"idle" | "loading" | "ready" | "error" | "fallback">("idle");
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -79,7 +88,7 @@ export default function Home() {
   useEffect(() => {
     if (!isAddressOpen || addressMode !== "map") return;
     if (!YANDEX_MAPS_API_KEY) {
-      setMapStatus("error");
+      setMapStatus("fallback");
       return;
     }
 
@@ -118,11 +127,11 @@ export default function Home() {
             const firstGeoObject = result.geoObjects.get(0);
             if (firstGeoObject) {
               const address = firstGeoObject.getAddressLine();
-              setSelectedMapAddress(address);
+              setDraftMapAddress(address);
             }
           })
           .catch(() => {
-            setSelectedMapAddress("Краснодар, выберите точку на карте");
+            setDraftMapAddress("Краснодар, выберите точку на карте");
           });
 
         map.events.add("click", (event: any) => {
@@ -138,13 +147,13 @@ export default function Home() {
               const firstGeoObject = result.geoObjects.get(0);
               if (firstGeoObject) {
                 const address = firstGeoObject.getAddressLine();
-                setSelectedMapAddress(address);
+                setDraftMapAddress(address);
               } else {
-                setSelectedMapAddress(`Краснодар, ${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`);
+                setDraftMapAddress(`Краснодар, ${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`);
               }
             })
             .catch(() => {
-              setSelectedMapAddress(`Краснодар, ${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`);
+              setDraftMapAddress(`Краснодар, ${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`);
             });
         });
       });
@@ -164,7 +173,7 @@ export default function Home() {
     script.src = `https://api-maps.yandex.ru/2.1/?apikey=${YANDEX_MAPS_API_KEY}&lang=ru_RU`;
     script.async = true;
     script.onload = initializeMap;
-    script.onerror = () => setMapStatus("error");
+    script.onerror = () => setMapStatus("fallback");
     document.body.appendChild(script);
 
     return () => {
@@ -217,13 +226,16 @@ export default function Home() {
 
             <div className="relative">
               <div className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-5 shadow-2xl shadow-black/30">
-                <div className="rounded-[1.75rem] border border-white/10 bg-[#17181a] p-6">
-                  <div className="mt-4 rounded-3xl border border-white/10 bg-black/20 p-5">
+                <div className="rounded-[1.75rem] border border-[#2c3807]/40 bg-[#1a2105] p-6">
+                  <div className="mt-4 rounded-3xl border border-white/10 bg-[#17181a] p-5">
                     <div className="mt-4 space-y-3">
                       <button
                         type="button"
-                        onClick={() => setIsAddressOpen((prev) => !prev)}
-                        className="w-full rounded-2xl bg-white/5 p-4 text-left transition hover:bg-white/10"
+                        onClick={() => {
+                          setAddressMode("map");
+                          setIsAddressOpen((prev) => !prev);
+                        }}
+                        className="w-full rounded-2xl bg-white/5 p-4 border border-white/10 text-left transition hover:bg-white/10"
                       >
                         <p className="text-sm text-white/50">Адрес</p>
                         <p className="mt-1 font-medium">{addressLabel}</p>
@@ -258,15 +270,67 @@ export default function Home() {
 
                           {addressMode === "map" ? (
                             <div>
-                              <div
-                                ref={mapContainerRef}
-                                className="min-h-[320px] overflow-hidden rounded-3xl border border-white/10"
-                              />
+                              {mapStatus === "fallback" ? (
+                                <div className="overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(135deg,#1d1f22,#111214)] p-5">
+                                  <div className="mb-4 flex items-center justify-between text-sm text-white/50">
+                                    <span>Карта Краснодара</span>
+                                    <span>Preview mode</span>
+                                  </div>
+                                  <div className="grid min-h-[320px] place-items-center rounded-[1.5rem] border border-dashed border-white/10 bg-black/20 p-6 text-center">
+                                    <div className="max-w-sm">
+                                      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-white/15 bg-white/5 text-2xl">
+                                        📍
+                                      </div>
+                                      <p className="text-lg font-semibold">Карта будет видна на реальном сайте</p>
+                                      <p className="mt-2 text-sm leading-6 text-white/50">
+                                        В preview внутри чата внешние скрипты и env-переменные могут не отрабатывать.
+                                        На localhost и Vercel загрузится настоящая Яндекс Карта.
+                                      </p>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedMapAddress("Краснодар, ул. Красная, 176")}
+                                        className="mt-5 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium transition hover:bg-white/10"
+                                      >
+                                        Выбрать тестовый адрес
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div
+                                  ref={mapContainerRef}
+                                  className="min-h-[320px] overflow-hidden rounded-3xl border border-white/10"
+                                />
+                              )}
                               <p className="mt-3 text-sm text-white/45">
                                 {mapStatus === "loading" && "Загружаем карту Краснодара..."}
-                                {mapStatus === "ready" && "Кликните по карте, чтобы выбрать адрес."}
+                                {mapStatus === "ready" && "Кликните по карте, чтобы выбрать дом, потом нажмите «Выбрать адрес»."}
                                 {mapStatus === "error" && "Карта не загрузилась. Проверьте API-ключ и перезапустите проект."}
+                                {mapStatus === "fallback" && "В preview показывается аккуратная заглушка, а на живом сайте — настоящая карта."}
                               </p>
+                              <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+                                <p className="text-sm text-white/50">Выбранный адрес</p>
+                                <p className="mt-1 font-medium">{draftMapAddress}</p>
+                                <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedMapAddress(draftMapAddress);
+                                      setIsAddressOpen(false);
+                                    }}
+                                    className="rounded-2xl bg-white px-4 py-3 text-sm font-bold text-black transition hover:scale-[1.01]"
+                                  >
+                                    Выбрать адрес
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsAddressOpen(false)}
+                                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold transition hover:bg-white/10"
+                                  >
+                                    Закрыть
+                                  </button>
+                                </div>
+                              </div>
                             </div>
                           ) : (
                             <div>
@@ -282,7 +346,7 @@ export default function Home() {
                       )}
 
                       <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-2xl bg-white/5 p-4">
+                        <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
                           <p className="text-sm text-white/50">Пакеты</p>
                           <div className="mt-3 grid gap-2">
                             {prices.map((item) => (
@@ -290,9 +354,9 @@ export default function Home() {
                                 key={item.id}
                                 type="button"
                                 onClick={() => setSelectedPackageId(item.id)}
-                                className={`rounded-2xl border px-3 py-3 text-left text-sm font-medium transition ${
+                                className={`rounded-2xl border px-3 py-3 text-left text-sm font-medium transition duration-200 hover:scale-[1.02] active:scale-[0.98] ${
                                   selectedPackageId === item.id
-                                    ? "border-white bg-white text-black"
+                                    ? "border-white bg-white text-black shadow-[0_0_0_1px_rgba(255,255,255,0.25)]"
                                     : "border-white/10 bg-white/5 text-white hover:bg-white/10"
                                 }`}
                               >
@@ -301,10 +365,122 @@ export default function Home() {
                             ))}
                           </div>
                         </div>
-                        <div className="rounded-2xl bg-white/5 p-4">
+                        <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
                           <p className="text-sm text-white/50">Стоимость</p>
                           <p className="mt-3 text-3xl font-black">{selectedPrice.label}</p>
                           <p className="mt-2 text-sm text-white/55">{selectedPrice.desc}</p>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3">
+                        <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
+                          <p className="text-sm text-white/50">Квартира / подъезд</p>
+                          <input
+                            value={apartment}
+                            onChange={(e) => setApartment(e.target.value)}
+                            placeholder="Например: кв. 54, подъезд 2"
+                            className="mt-3 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-4 text-white placeholder:text-white/35 outline-none transition focus:border-white/25"
+                          />
+                        </div>
+
+                        <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
+                          <p className="text-sm text-white/50">Комментарий курьеру</p>
+                          <textarea
+                            value={comment}
+                            onChange={(e) => setComment(e.target.value)}
+                            placeholder="Например: домофон не работает, пакет у двери"
+                            rows={3}
+                            className="mt-3 w-full resize-none rounded-2xl border border-white/10 bg-black/20 px-4 py-4 text-white placeholder:text-white/35 outline-none transition focus:border-white/25"
+                          />
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <div className="rounded-2xl bg-white/5 p-4 border border-white/10 sm:col-span-1">
+                            <p className="text-sm text-white/50">Позвонить?</p>
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setShouldCall("yes")}
+                                className={`rounded-2xl px-3 py-3 text-sm font-semibold transition flex items-center justify-center hover:scale-[1.03] active:scale-[0.97] ${
+                                  shouldCall === "yes"
+                                    ? "bg-white text-black"
+                                    : "bg-black/20 text-white hover:bg-white/10"
+                                }`}
+                              >
+                                Да
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setShouldCall("no")}
+                                className={`rounded-2xl px-3 py-3 text-sm font-semibold transition flex items-center justify-center hover:scale-[1.03] active:scale-[0.97] ${
+                                  shouldCall === "no"
+                                    ? "bg-white text-black"
+                                    : "bg-black/20 text-white hover:bg-white/10"
+                                }`}
+                              >
+                                Нет
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="rounded-2xl bg-white/5 p-4 border border-white/10 sm:col-span-2">
+                            <p className="text-sm text-white/50">Способ оплаты</p>
+                            <div className="mt-3 grid grid-cols-3 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setPaymentMethod("card")}
+                                className={`rounded-2xl px-3 py-3 text-sm font-semibold transition flex items-center justify-center hover:scale-[1.03] active:scale-[0.97] ${
+                                  paymentMethod === "card"
+                                    ? "bg-white text-black"
+                                    : "bg-black/20 text-white hover:bg-white/10"
+                                }`}
+                              >
+                                Картой
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setPaymentMethod("cash")}
+                                className={`rounded-2xl px-3 py-3 text-sm font-semibold transition flex items-center justify-center hover:scale-[1.03] active:scale-[0.97] ${
+                                  paymentMethod === "cash"
+                                    ? "bg-white text-black"
+                                    : "bg-black/20 text-white hover:bg-white/10"
+                                }`}
+                              >
+                                Наличные
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setPaymentMethod("sbp")}
+                                className={`rounded-2xl px-3 py-3 text-sm font-semibold transition flex items-center justify-center hover:scale-[1.03] active:scale-[0.97] ${
+                                  paymentMethod === "sbp"
+                                    ? "bg-white text-black"
+                                    : "bg-black/20 text-white hover:bg-white/10"
+                                }`}
+                              >
+                                СБП
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
+                          <p className="text-sm text-white/50">Чаевые</p>
+                          <div className="mt-3 grid grid-cols-3 gap-2">
+                            {[0, 50, 100].map((value) => (
+                              <button
+                                key={value}
+                                type="button"
+                                onClick={() => setTip(value as 0 | 50 | 100)}
+                                className={`rounded-2xl px-3 py-3 text-sm font-semibold transition flex items-center justify-center hover:scale-[1.03] active:scale-[0.97] ${
+                                  tip === value
+                                    ? "bg-white text-black"
+                                    : "bg-black/20 text-white hover:bg-white/10"
+                                }`}
+                              >
+                                {value === 0 ? "Без чаевых" : `${value} ₽`}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -371,7 +547,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setSelectedPackageId(item.id)}
-                    className={`mt-8 w-full rounded-2xl px-4 py-3 font-semibold transition ${
+                    className={`mt-8 w-full rounded-2xl px-4 py-3 font-semibold transition duration-200 hover:scale-[1.02] active:scale-[0.98] ${
                       selectedPackageId === item.id
                         ? "border border-black/10 bg-black text-white hover:opacity-90"
                         : "border border-white/15 bg-white/5 hover:bg-white/10"
