@@ -49,11 +49,9 @@ export default function MusorokLanding() {
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0f1011]/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
           <div className="flex items-center gap-3">
-            <img
-  		src="/musorok-logo.png"
-  		alt="МусорОК"
-  		className="h-10 w-auto"
-		/>
+  		<div className="text-2xl font-extrabold tracking-tight text-white">
+  			МусорОК
+  		</div>
             <span className="hidden text-sm text-white/60 md:block">Сервис выноса мусора по кнопке</span>
           </div>
           <nav className="hidden items-center gap-6 text-sm text-white/75 md:flex">
