@@ -67,22 +67,28 @@ export default function Home() {
 
   const selectedPrice = useMemo(() => {
     return prices.find((item) => item.id === selectedPackageId) ?? prices[1];
-  }, [prices, selectedPackageId]);
+  }, [selectedPackageId]);
 
-  const addressLabel = addressMode === "manual"
-    ? manualAddress || "Введите адрес вручную"
-    : `Краснодар, ${selectedArea}`;
+  const addressLabel =
+    addressMode === "manual"
+      ? manualAddress || "Введите адрес вручную"
+      : `Краснодар, ${selectedArea}`;
 
   return (
     <div className="min-h-screen bg-[#0f1011] text-white">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0f1011]/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
           <div className="flex items-center gap-3">
-            <img src="/musorok-logo-removebg-preview.png" alt="МусорОК" className="h-8 w-auto" />
+            <img
+              src="/musorok-logo-removebg-preview.png"
+              alt="МусорОК"
+              className="h-8 w-auto"
+            />
             <span className="hidden text-sm text-white/60 md:block">
               Сервис выноса мусора в Краснодаре
             </span>
           </div>
+
           <nav className="hidden items-center gap-6 text-sm text-white/75 md:flex">
             <a href="#how" className="transition hover:text-white">
               Как это работает
@@ -108,6 +114,7 @@ export default function Home() {
                   МусорОК вынесет за тебя.
                 </span>
               </h1>
+
               <p className="mt-6 max-w-xl text-lg leading-8 text-white/70">
                 Заказывайте вынос бытового мусора через сайт или приложение. Исполнитель
                 приходит, забирает пакеты и относит их к контейнерам — быстро, просто и
@@ -143,6 +150,7 @@ export default function Home() {
                             >
                               Выбрать на карте
                             </button>
+
                             <button
                               type="button"
                               onClick={() => setAddressMode("manual")}
@@ -164,6 +172,7 @@ export default function Home() {
                                     <span>Карта Краснодара</span>
                                     <span>Выберите район</span>
                                   </div>
+
                                   <div className="grid grid-cols-2 gap-3">
                                     {krasnodarAreas.map((area) => (
                                       <button
@@ -182,8 +191,10 @@ export default function Home() {
                                   </div>
                                 </div>
                               </div>
+
                               <p className="mt-3 text-sm text-white/45">
-                                Пока это MVP-карта: на следующем этапе можно подключить настоящую карту с пином.
+                                Пока это MVP-карта: на следующем этапе можно подключить
+                                настоящую карту с пином.
                               </p>
                             </div>
                           ) : (
@@ -214,11 +225,13 @@ export default function Home() {
                                     : "border-white/10 bg-white/5 text-white hover:bg-white/10"
                                 }`}
                               >
-                                {item.id} пакет{item.id === "1" ? "" : item.id === "2-3" ? "а" : "ов"}
+                                {item.id} пакет
+                                {item.id === "1" ? "" : item.id === "2-3" ? "а" : "ов"}
                               </button>
                             ))}
                           </div>
                         </div>
+
                         <div className="rounded-2xl bg-white/5 p-4">
                           <p className="text-sm text-white/50">Стоимость</p>
                           <p className="mt-3 text-3xl font-black">{selectedPrice.label}</p>
@@ -226,6 +239,7 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
+
                     <button className="mt-5 w-full rounded-2xl bg-white px-5 py-4 font-bold text-black transition hover:scale-[1.01]">
                       Заберите мусор
                     </button>
@@ -245,6 +259,7 @@ export default function Home() {
               Три простых шага, чтобы не нести мусор самому
             </h2>
           </div>
+
           <div className="mt-10 grid gap-6 md:grid-cols-3">
             {steps.map((step, i) => (
               <div
@@ -271,6 +286,7 @@ export default function Home() {
                 Понятные цены без сложных условий
               </h2>
             </div>
+
             <div className="mt-10 grid gap-6 lg:grid-cols-3">
               {prices.map((item) => (
                 <div
@@ -281,11 +297,23 @@ export default function Home() {
                       : "border-white/10 bg-black/20"
                   }`}
                 >
-                  <p className={`text-sm uppercase tracking-[0.18em] ${selectedPackageId === item.id ? "text-black/45" : "text-white/45"}`}>
+                  <p
+                    className={`text-sm uppercase tracking-[0.18em] ${
+                      selectedPackageId === item.id ? "text-black/45" : "text-white/45"
+                    }`}
+                  >
                     {item.name}
                   </p>
+
                   <p className="mt-4 text-4xl font-black">{item.label}</p>
-                  <p className={`mt-3 ${selectedPackageId === item.id ? "text-black/65" : "text-white/65"}`}>{item.desc}</p>
+                  <p
+                    className={`mt-3 ${
+                      selectedPackageId === item.id ? "text-black/65" : "text-white/65"
+                    }`}
+                  >
+                    {item.desc}
+                  </p>
+
                   <button
                     type="button"
                     onClick={() => setSelectedPackageId(item.id)}
@@ -312,6 +340,7 @@ export default function Home() {
               <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
                 Сервис для тех, кто ценит время и комфорт
               </h2>
+
               <div className="mt-8 grid gap-3 sm:grid-cols-2">
                 {audience.map((item) => (
                   <div
@@ -323,6 +352,7 @@ export default function Home() {
                 ))}
               </div>
             </div>
+
             <div className="rounded-[2rem] border border-white/10 bg-white p-8 text-black">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-black/45">
                 Оффер
@@ -334,6 +364,7 @@ export default function Home() {
                 МусорОК — это бытовой сервис нового типа: открыл, заказал, отдал пакет,
                 забыл о проблеме. Без звонков, ожиданий и лишней суеты.
               </p>
+
               <div className="mt-8 space-y-3">
                 <div className="rounded-2xl bg-black/5 p-4">
                   Подходит для пилотного запуска в одном районе или ЖК
@@ -364,6 +395,7 @@ export default function Home() {
                   запуске в вашем районе.
                 </p>
               </div>
+
               <form className="rounded-[1.75rem] border border-white/10 bg-black/20 p-5">
                 <div className="space-y-3">
                   <input
@@ -382,6 +414,7 @@ export default function Home() {
                     Хочу доступ
                   </button>
                 </div>
+
                 <p className="mt-3 text-xs leading-5 text-white/40">
                   Нажимая кнопку, вы соглашаетесь на обработку данных. Текст политики
                   можно добавить на следующем этапе.
@@ -400,6 +433,7 @@ export default function Home() {
               Частые вопросы
             </h2>
           </div>
+
           <div className="mt-10 grid gap-4">
             {faq.map((item) => (
               <div
