@@ -111,18 +111,27 @@ export default function AdminPage() {
     const channel = supabase
       .channel("orders-realtime")
       .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "orders",
-        },
-        (payload) => {
-          const newOrder = payload.new as OrderRow;
+  	"postgres_changes",
+ 	 {
+ 	   event: "INSERT",
+ 	   schema: "public",
+  	  table: "orders",
+	 },
+	 async (payload) => {
+   	  const orderId = payload.new.id;
 
-          setOrders((prev) => [newOrder, ...prev]);
-        }
+    	  const { data } = await supabase
+      	    .from("orders")
+            .select(	"id,status,address,package_id,package_label,package_price,apartment,entrance,comment,leave_at_door,phone,should_call,payment_method,tip,total,created_at"
       )
+      	    .eq("id", orderId)
+            .single();
+
+    if (!data) return;
+
+    setOrders((prev) => [data as OrderRow, ...prev]);
+  }
+)
       .on(
         "postgres_changes",
         {
