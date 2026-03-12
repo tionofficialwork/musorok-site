@@ -1,4 +1,9 @@
 import { useMemo, useState } from "react";
+import {
+  trackOrderSubmit,
+  trackOrderSuccess,
+  trackStep3Complete,
+} from "@/lib/analytics";
 import { DEFAULT_ADDRESS_LABEL, prices } from "@/lib/constants";
 import { supabase } from "@/lib/supabase";
 import type {
@@ -131,6 +136,9 @@ export function useOrderForm() {
       return;
     }
 
+    trackStep3Complete();
+    trackOrderSubmit();
+
     setSubmitStatus("submitting");
     setSubmitMessage("");
 
@@ -158,6 +166,8 @@ export function useOrderForm() {
       );
       return;
     }
+
+    trackOrderSuccess();
 
     setSubmitStatus("success");
     setSubmitMessage(

@@ -6,32 +6,26 @@ declare global {
 
 const YM_COUNTER_ID = Number(process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID || 0);
 
+function canTrack() {
+  return (
+    typeof window !== "undefined" &&
+    YM_COUNTER_ID > 0 &&
+    typeof window.ym === "function"
+  );
+}
+
 export function reachGoal(
   target: string,
   params?: Record<string, string | number | boolean | null>
 ) {
-  if (typeof window === "undefined") return;
-  if (!YM_COUNTER_ID) return;
-  if (typeof window.ym !== "function") return;
+  if (!canTrack()) return;
 
   if (params) {
-    window.ym(YM_COUNTER_ID, "reachGoal", target, params);
+    window.ym?.(YM_COUNTER_ID, "reachGoal", target, params);
     return;
   }
 
-  window.ym(YM_COUNTER_ID, "reachGoal", target);
-}
-
-export function trackPhoneClick() {
-  reachGoal("click_phone");
-}
-
-export function trackWhatsappClick() {
-  reachGoal("click_whatsapp");
-}
-
-export function trackTelegramClick() {
-  reachGoal("click_telegram");
+  window.ym?.(YM_COUNTER_ID, "reachGoal", target);
 }
 
 export function trackFormStart() {
@@ -56,4 +50,16 @@ export function trackOrderSubmit() {
 
 export function trackOrderSuccess() {
   reachGoal("order_success");
+}
+
+export function trackPhoneClick() {
+  reachGoal("click_phone");
+}
+
+export function trackWhatsappClick() {
+  reachGoal("click_whatsapp");
+}
+
+export function trackTelegramClick() {
+  reachGoal("click_telegram");
 }

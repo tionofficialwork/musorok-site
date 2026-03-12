@@ -3,8 +3,13 @@ import StepOne from "@/components/landing/StepOne";
 import StepThree from "@/components/landing/StepThree";
 import StepTwo from "@/components/landing/StepTwo";
 import SuccessStep from "@/components/landing/SuccessStep";
-import type { OrderCardProps } from "@/lib/types";
 import { DEFAULT_ADDRESS_LABEL } from "@/lib/constants";
+import {
+  trackFormStart,
+  trackStep1Complete,
+  trackStep2Complete,
+} from "@/lib/analytics";
+import type { OrderCardProps } from "@/lib/types";
 
 export default function OrderCard(props: OrderCardProps) {
   const isAddressSelected = props.addressLabel !== DEFAULT_ADDRESS_LABEL;
@@ -60,8 +65,17 @@ export default function OrderCard(props: OrderCardProps) {
   };
 
   const goToStepOne = () => props.setOrderStep(1);
-  const goToStepTwo = () => props.setOrderStep(2);
-  const goToStepThree = () => props.setOrderStep(3);
+
+  const goToStepTwo = () => {
+    trackFormStart();
+    trackStep1Complete();
+    props.setOrderStep(2);
+  };
+
+  const goToStepThree = () => {
+    trackStep2Complete();
+    props.setOrderStep(3);
+  };
 
   const showTrustBlock =
     props.submitStatus !== "success" && props.orderStep === 1;
