@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
@@ -11,6 +11,8 @@ type OrderStatus =
   | "arrived"
   | "done"
   | "cancelled";
+
+type RealtimeStatus = "connecting" | "online" | "offline";
 
 type OrderRow = {
   id: string;
@@ -66,6 +68,14 @@ function formatDate(value: string | null) {
     dateStyle: "short",
     timeStyle: "short",
   }).format(date);
+}
+
+function formatTime(value: Date | null) {
+  if (!value) return "—";
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    timeStyle: "medium",
+  }).format(value);
 }
 
 function statusLabel(status: string | null) {
@@ -177,16 +187,61 @@ function playNewOrderSound() {
 export default function AdminPage() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [newOrderIds, setNewOrderIds] = useState<string[]>([]);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [realtimeStatus, setRealtimeStatus] =
+    useState<RealtimeStatus>("connecting");
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
 
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const hasLoadedInitialOrdersRef = useRef(false);
 
+  const loadOrders = useCallback(
+    async (mode: "initial" | "manual" = "initial") => {
+      if (mode === "manual") {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      const { data, error } = await supabase
+        .from("orders")
+        .select(
+          "id,status,address,package_label,apartment,entrance,comment,leave_at_door,phone,payment_method,total,created_at"
+        )
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Не удалось загрузить заказы:", error.message);
+        setOrders([]);
+        if (mode === "manual") {
+          setRefreshing(false);
+        } else {
+          setLoading(false);
+        }
+        return;
+      }
+
+      const loadedOrders = (data ?? []) as OrderRow[];
+      setOrders(loadedOrders);
+      knownOrderIdsRef.current = new Set(loadedOrders.map((order) => order.id));
+      hasLoadedInitialOrdersRef.current = true;
+      setLastSyncedAt(new Date());
+
+      if (mode === "manual") {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     let isMounted = true;
 
-    async function loadOrders() {
+    async function initialLoad() {
       setLoading(true);
 
       const { data, error } = await supabase
@@ -209,10 +264,11 @@ export default function AdminPage() {
       setOrders(loadedOrders);
       knownOrderIdsRef.current = new Set(loadedOrders.map((order) => order.id));
       hasLoadedInitialOrdersRef.current = true;
+      setLastSyncedAt(new Date());
       setLoading(false);
     }
 
-    loadOrders();
+    initialLoad();
 
     const channel = supabase
       .channel("orders")
@@ -238,6 +294,8 @@ export default function AdminPage() {
             return [data as OrderRow, ...prev];
           });
 
+          setLastSyncedAt(new Date());
+
           if (
             hasLoadedInitialOrdersRef.current &&
             !knownOrderIdsRef.current.has(id)
@@ -261,15 +319,36 @@ export default function AdminPage() {
           setOrders((prev) =>
             prev.map((order) => (order.id === updated.id ? updated : order))
           );
+          setLastSyncedAt(new Date());
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          setRealtimeStatus("online");
+          return;
+        }
+
+        if (
+          status === "CHANNEL_ERROR" ||
+          status === "TIMED_OUT" ||
+          status === "CLOSED"
+        ) {
+          setRealtimeStatus("offline");
+          return;
+        }
+
+        setRealtimeStatus("connecting");
+      });
 
     return () => {
       isMounted = false;
       supabase.removeChannel(channel);
     };
   }, []);
+
+  async function handleManualRefresh() {
+    await loadOrders("manual");
+  }
 
   async function changeStatus(id: string, status: OrderStatus) {
     setUpdatingOrderId(id);
@@ -288,7 +367,7 @@ export default function AdminPage() {
     setOrders((prev) =>
       prev.map((order) => (order.id === id ? { ...order, status } : order))
     );
-
+    setLastSyncedAt(new Date());
     setUpdatingOrderId(null);
   }
 
@@ -353,32 +432,40 @@ export default function AdminPage() {
 
         {!loading && (
           <section className="sticky top-4 z-20 mb-8 rounded-3xl border border-white/10 bg-[#151617]/90 p-4 backdrop-blur">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-              <CounterCard
-                label="Новые"
-                value={newOrders.length}
-                tone="sky"
-              />
-              <CounterCard
-                label="В работе"
-                value={activeOrders.length}
-                tone="amber"
-              />
-              <CounterCard
-                label="Требуют внимания"
-                value={attentionOrders.length}
-                tone="red"
-              />
-              <CounterCard
-                label="Завершенные"
-                value={finishedOrders.length}
-                tone="emerald"
-              />
-              <CounterCard
-                label="Всего"
-                value={orders.length}
-                tone="neutral"
-              />
+            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:flex-1">
+                <CounterCard label="Новые" value={newOrders.length} tone="sky" />
+                <CounterCard
+                  label="В работе"
+                  value={activeOrders.length}
+                  tone="amber"
+                />
+                <CounterCard
+                  label="Требуют внимания"
+                  value={attentionOrders.length}
+                  tone="red"
+                />
+                <CounterCard
+                  label="Завершенные"
+                  value={finishedOrders.length}
+                  tone="emerald"
+                />
+                <CounterCard label="Всего" value={orders.length} tone="neutral" />
+              </div>
+
+              <div className="flex flex-col gap-3 lg:w-[260px]">
+                <RealtimeBadge status={realtimeStatus} />
+                <button
+                  onClick={handleManualRefresh}
+                  disabled={refreshing}
+                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {refreshing ? "Обновляем..." : "Обновить"}
+                </button>
+                <div className="text-xs text-white/45">
+                  Последняя синхронизация: {formatTime(lastSyncedAt)}
+                </div>
+              </div>
             </div>
           </section>
         )}
@@ -478,6 +565,31 @@ function CounterCard({
     <div className={`rounded-2xl border p-4 ${toneClass}`}>
       <p className="text-xs uppercase tracking-[0.14em] opacity-70">{label}</p>
       <p className="mt-2 text-2xl font-black">{value}</p>
+    </div>
+  );
+}
+
+function RealtimeBadge({ status }: { status: RealtimeStatus }) {
+  const config =
+    status === "online"
+      ? {
+          label: "Realtime: онлайн",
+          className:
+            "border-emerald-400/20 bg-emerald-400/10 text-emerald-200",
+        }
+      : status === "offline"
+      ? {
+          label: "Realtime: офлайн",
+          className: "border-red-400/20 bg-red-400/10 text-red-200",
+        }
+      : {
+          label: "Realtime: подключение",
+          className: "border-amber-400/20 bg-amber-400/10 text-amber-200",
+        };
+
+  return (
+    <div className={`rounded-2xl border px-4 py-3 text-sm ${config.className}`}>
+      {config.label}
     </div>
   );
 }
