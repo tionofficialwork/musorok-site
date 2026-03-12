@@ -406,6 +406,53 @@ export default function AdminPage() {
     setUpdatingOrderId(null);
   }
 
+  const newCount = useMemo(
+    () => orders.filter((order) => order.status === "new").length,
+    [orders]
+  );
+
+  const activeCount = useMemo(
+    () =>
+      orders.filter(
+        (order) =>
+          order.status === "assigned" ||
+          order.status === "on_the_way" ||
+          order.status === "arrived"
+      ).length,
+    [orders]
+  );
+
+  const attentionCount = useMemo(
+    () =>
+      orders.filter(
+        (order) =>
+          order.status === "new" ||
+          order.status === "assigned" ||
+          order.status === "on_the_way" ||
+          order.status === "arrived"
+      ).length,
+    [orders]
+  );
+
+  const doneCount = useMemo(
+    () => orders.filter((order) => order.status === "done").length,
+    [orders]
+  );
+
+  const cancelledCount = useMemo(
+    () => orders.filter((order) => order.status === "cancelled").length,
+    [orders]
+  );
+
+  const chipCounts: Record<StatusFilter, number> = {
+    all: orders.length,
+    new: newCount,
+    active: activeCount,
+    attention: attentionCount,
+    done: doneCount,
+    cancelled: cancelledCount,
+  };
+
   const filteredOrders = useMemo(
     () =>
       orders.filter(
@@ -531,13 +578,22 @@ export default function AdminPage() {
                       key={option.value}
                       type="button"
                       onClick={() => setStatusFilter(option.value)}
-                      className={`rounded-full border px-4 py-2 text-sm transition ${
+                      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition ${
                         isActive
                           ? "border-white/20 bg-white text-[#0f1011]"
                           : "border-white/10 bg-white/5 text-white/75 hover:bg-white/10"
                       }`}
                     >
-                      {option.label}
+                      <span>{option.label}</span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs ${
+                          isActive
+                            ? "bg-[#0f1011]/10 text-[#0f1011]"
+                            : "bg-white/10 text-white/80"
+                        }`}
+                      >
+                        {chipCounts[option.value]}
+                      </span>
                     </button>
                   );
                 })}
