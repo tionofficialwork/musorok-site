@@ -35,21 +35,25 @@ export const metadata: Metadata = {
   robots: {
     index: false,
     follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+    },
   },
 };
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <html lang="ru">
       <body>
         {children}
-        {yandexMetricaId > 0 && (
+        {yandexMetricaId > 0 ? (
           <YandexMetrica counterId={yandexMetricaId} />
-        )}
+        ) : null}
       </body>
     </html>
   );
