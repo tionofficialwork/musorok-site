@@ -13,6 +13,13 @@ type OrderStatus =
   | "cancelled";
 
 type RealtimeStatus = "connecting" | "online" | "offline";
+type StatusFilter =
+  | "all"
+  | "new"
+  | "active"
+  | "attention"
+  | "done"
+  | "cancelled";
 
 type OrderRow = {
   id: string;
@@ -36,6 +43,15 @@ const statusOptions: { value: OrderStatus; label: string }[] = [
   { value: "arrived", label: "На месте" },
   { value: "done", label: "Выполнен" },
   { value: "cancelled", label: "Отменён" },
+];
+
+const statusFilterOptions: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "Все" },
+  { value: "new", label: "Новые" },
+  { value: "active", label: "В работе" },
+  { value: "attention", label: "Требуют внимания" },
+  { value: "done", label: "Завершённые" },
+  { value: "cancelled", label: "Отменённые" },
 ];
 
 const statusPriority: Record<OrderStatus, number> = {
@@ -151,6 +167,34 @@ function matchesSearch(order: OrderRow, query: string) {
   return haystack.includes(normalizedQuery);
 }
 
+function matchesStatusFilter(order: OrderRow, filter: StatusFilter) {
+  switch (filter) {
+    case "all":
+      return true;
+    case "new":
+      return order.status === "new";
+    case "active":
+      return (
+        order.status === "assigned" ||
+        order.status === "on_the_way" ||
+        order.status === "arrived"
+      );
+    case "attention":
+      return (
+        order.status === "new" ||
+        order.status === "assigned" ||
+        order.status === "on_the_way" ||
+        order.status === "arrived"
+      );
+    case "done":
+      return order.status === "done";
+    case "cancelled":
+      return order.status === "cancelled";
+    default:
+      return true;
+  }
+}
+
 async function copy(text: string | null) {
   if (!text) return;
 
@@ -211,6 +255,7 @@ export default function AdminPage() {
     useState<RealtimeStatus>("connecting");
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const hasLoadedInitialOrdersRef = useRef(false);
@@ -361,15 +406,20 @@ export default function AdminPage() {
     setUpdatingOrderId(null);
   }
 
-  const searchedOrders = useMemo(
-    () => orders.filter((order) => matchesSearch(order, searchQuery)),
-    [orders, searchQuery]
+  const filteredOrders = useMemo(
+    () =>
+      orders.filter(
+        (order) =>
+          matchesSearch(order, searchQuery) &&
+          matchesStatusFilter(order, statusFilter)
+      ),
+    [orders, searchQuery, statusFilter]
   );
 
   const attentionOrders = useMemo(
     () =>
       sortOrdersByPriority(
-        searchedOrders.filter(
+        filteredOrders.filter(
           (order) =>
             order.status === "new" ||
             order.status === "assigned" ||
@@ -377,38 +427,38 @@ export default function AdminPage() {
             order.status === "arrived"
         )
       ),
-    [searchedOrders]
+    [filteredOrders]
   );
 
   const newOrders = useMemo(
     () =>
       sortOrdersByPriority(
-        searchedOrders.filter((order) => order.status === "new")
+        filteredOrders.filter((order) => order.status === "new")
       ),
-    [searchedOrders]
+    [filteredOrders]
   );
 
   const activeOrders = useMemo(
     () =>
       sortOrdersByPriority(
-        searchedOrders.filter(
+        filteredOrders.filter(
           (order) =>
             order.status === "assigned" ||
             order.status === "on_the_way" ||
             order.status === "arrived"
         )
       ),
-    [searchedOrders]
+    [filteredOrders]
   );
 
   const finishedOrders = useMemo(
     () =>
       sortOrdersByPriority(
-        searchedOrders.filter(
+        filteredOrders.filter(
           (order) => order.status === "done" || order.status === "cancelled"
         )
       ),
-    [searchedOrders]
+    [filteredOrders]
   );
 
   return (
@@ -431,16 +481,43 @@ export default function AdminPage() {
           <>
             <section className="mb-6">
               <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-                <label className="mb-2 block text-sm text-white/55">
-                  Поиск по заказам
-                </label>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Телефон, адрес, комментарий, тариф..."
-                  className="w-full rounded-2xl border border-white/10 bg-[#1b1c1d] px-4 py-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/20"
-                />
+                <div className="grid gap-4 lg:grid-cols-[1fr_240px]">
+                  <div>
+                    <label className="mb-2 block text-sm text-white/55">
+                      Поиск по заказам
+                    </label>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Телефон, адрес, комментарий, тариф..."
+                      className="w-full rounded-2xl border border-white/10 bg-[#1b1c1d] px-4 py-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/20"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm text-white/55">
+                      Фильтр по статусу
+                    </label>
+                    <select
+                      value={statusFilter}
+                      onChange={(e) =>
+                        setStatusFilter(e.target.value as StatusFilter)
+                      }
+                      className="w-full rounded-2xl border border-white/10 bg-[#1b1c1d] px-4 py-3 text-sm text-white outline-none"
+                    >
+                      {statusFilterOptions.map((option) => (
+                        <option
+                          key={option.value}
+                          value={option.value}
+                          className="bg-[#1b1c1d] text-white"
+                        >
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -465,7 +542,7 @@ export default function AdminPage() {
                   />
                   <CounterCard
                     label="Всего найдено"
-                    value={searchedOrders.length}
+                    value={filteredOrders.length}
                     tone="neutral"
                   />
                 </div>
@@ -547,9 +624,9 @@ export default function AdminPage() {
               updatingOrderId={updatingOrderId}
             />
 
-            {searchedOrders.length === 0 && (
+            {filteredOrders.length === 0 && (
               <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-white/60">
-                Ничего не найдено по текущему запросу.
+                Ничего не найдено по текущим фильтрам.
               </div>
             )}
           </>
