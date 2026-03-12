@@ -1,9 +1,21 @@
-export default function PricesSection() {
+type PricesSectionProps = {
+  selectedPackageId: string;
+  setSelectedPackageId: React.Dispatch<React.SetStateAction<string>>;
+  setOrderStep: React.Dispatch<React.SetStateAction<1 | 2 | 3>>;
+};
+
+export default function PricesSection({
+  selectedPackageId,
+  setSelectedPackageId,
+  setOrderStep,
+}: PricesSectionProps) {
   const plans = [
     {
+      id: "small",
       title: "1 пакет",
       price: "99 ₽",
-      description: "Для быстрого и самого простого заказа, когда нужно вынести немного бытового мусора.",
+      description:
+        "Для быстрого и самого простого заказа, когда нужно вынести немного бытового мусора.",
       points: [
         "Подходит для небольшого объёма",
         "Удобно попробовать сервис впервые",
@@ -12,9 +24,11 @@ export default function PricesSection() {
       accent: false,
     },
     {
+      id: "medium",
       title: "2–3 пакета",
       price: "149 ₽",
-      description: "Оптимальный вариант для большинства обычных заказов из квартиры или дома.",
+      description:
+        "Оптимальный вариант для большинства обычных заказов из квартиры или дома.",
       points: [
         "Самый понятный повседневный сценарий",
         "Хороший баланс цены и объёма",
@@ -24,9 +38,11 @@ export default function PricesSection() {
       badge: "Популярный вариант",
     },
     {
+      id: "large",
       title: "4+ пакетов",
       price: "199 ₽",
-      description: "Когда мусора накопилось больше обычного и нужен более объёмный вынос за один раз.",
+      description:
+        "Когда мусора накопилось больше обычного и нужен более объёмный вынос за один раз.",
       points: [
         "Для более крупного бытового объёма",
         "Помогает закрыть задачу за один заказ",
@@ -48,6 +64,16 @@ export default function PricesSection() {
     "Непрозрачная цена после заявки",
   ];
 
+  const handleSelect = (planId: string) => {
+    setSelectedPackageId(planId);
+    setOrderStep(1);
+
+    const orderSection = document.getElementById("order");
+    if (orderSection) {
+      orderSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   return (
     <section id="prices" className="border-t border-white/10 bg-[#050816]">
       <div className="mx-auto max-w-7xl px-5 py-20 sm:px-6 lg:px-8 lg:py-24">
@@ -68,57 +94,68 @@ export default function PricesSection() {
         </div>
 
         <div className="mt-12 grid gap-4 lg:grid-cols-3">
-          {plans.map((plan) => (
-            <div
-              key={plan.title}
-              className={`rounded-3xl border p-6 sm:p-7 ${
-                plan.accent
-                  ? "border-emerald-400/30 bg-emerald-400/[0.08] shadow-[0_0_0_1px_rgba(52,211,153,0.08)]"
-                  : "border-white/10 bg-white/[0.04]"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-white">
-                    {plan.title}
-                  </div>
-                  <div className="mt-3 text-4xl font-semibold tracking-tight text-white">
-                    {plan.price}
-                  </div>
-                </div>
+          {plans.map((plan) => {
+            const isSelected = selectedPackageId === plan.id;
 
-                {plan.badge ? (
-                  <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-                    {plan.badge}
-                  </span>
-                ) : null}
-              </div>
-
-              <p className="mt-5 text-sm leading-6 text-white/65 sm:text-base">
-                {plan.description}
-              </p>
-
-              <div className="mt-6 space-y-3">
-                {plan.points.map((point) => (
-                  <div key={point} className="flex items-start gap-3">
-                    <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-emerald-400" />
-                    <span className="text-sm leading-6 text-white/78">{point}</span>
-                  </div>
-                ))}
-              </div>
-
-              <a
-                href="#order"
-                className={`mt-7 inline-flex w-full items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold transition ${
-                  plan.accent
-                    ? "bg-white text-black hover:bg-white/90"
-                    : "border border-white/12 bg-white/5 text-white hover:bg-white/10"
+            return (
+              <div
+                key={plan.id}
+                className={`rounded-3xl border p-6 sm:p-7 ${
+                  isSelected
+                    ? "border-emerald-400/40 bg-emerald-400/[0.10] shadow-[0_0_0_1px_rgba(52,211,153,0.10)]"
+                    : plan.accent
+                    ? "border-emerald-400/25 bg-emerald-400/[0.06]"
+                    : "border-white/10 bg-white/[0.04]"
                 }`}
               >
-                Выбрать этот вариант
-              </a>
-            </div>
-          ))}
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-white">
+                      {plan.title}
+                    </div>
+                    <div className="mt-3 text-4xl font-semibold tracking-tight text-white">
+                      {plan.price}
+                    </div>
+                  </div>
+
+                  {plan.badge ? (
+                    <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+                      {plan.badge}
+                    </span>
+                  ) : null}
+                </div>
+
+                <p className="mt-5 text-sm leading-6 text-white/65 sm:text-base">
+                  {plan.description}
+                </p>
+
+                <div className="mt-6 space-y-3">
+                  {plan.points.map((point) => (
+                    <div key={point} className="flex items-start gap-3">
+                      <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-emerald-400" />
+                      <span className="text-sm leading-6 text-white/78">
+                        {point}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelect(plan.id)}
+                  className={`mt-7 inline-flex w-full items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold transition ${
+                    isSelected
+                      ? "bg-white text-black hover:bg-white/90"
+                      : plan.accent
+                      ? "bg-white text-black hover:bg-white/90"
+                      : "border border-white/12 bg-white/5 text-white hover:bg-white/10"
+                  }`}
+                >
+                  {isSelected ? "Выбрано" : "Выбрать этот вариант"}
+                </button>
+              </div>
+            );
+          })}
         </div>
 
         <div className="mt-10 grid gap-4 lg:grid-cols-2">
@@ -135,7 +172,9 @@ export default function PricesSection() {
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 sm:p-7">
-            <div className="text-lg font-semibold text-white">Что важно заранее</div>
+            <div className="text-lg font-semibold text-white">
+              Что важно заранее
+            </div>
             <div className="mt-5 space-y-3">
               {notIncluded.map((item) => (
                 <div key={item} className="flex items-start gap-3">
