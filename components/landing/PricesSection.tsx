@@ -100,12 +100,12 @@ export default function PricesSection({
             return (
               <div
                 key={plan.id}
-                className={`relative flex h-full flex-col rounded-3xl border p-6 transition sm:p-7 ${
+                className={`relative flex h-full flex-col rounded-3xl border p-6 transition duration-200 sm:p-7 ${
                   isSelected
                     ? "border-emerald-400/60 bg-emerald-400/[0.14] shadow-[0_0_0_1px_rgba(52,211,153,0.20),0_20px_60px_rgba(16,185,129,0.08)]"
                     : plan.accent
-                    ? "border-emerald-400/25 bg-emerald-400/[0.06]"
-                    : "border-white/10 bg-white/[0.04]"
+                    ? "border-emerald-400/25 bg-emerald-400/[0.06] hover:-translate-y-1 hover:border-emerald-400/40 hover:bg-emerald-400/[0.09] hover:shadow-[0_16px_40px_rgba(0,0,0,0.25)]"
+                    : "border-white/10 bg-white/[0.04] hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.06] hover:shadow-[0_16px_40px_rgba(0,0,0,0.25)]"
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -137,7 +137,7 @@ export default function PricesSection({
                   {plan.description}
                 </p>
 
-                <div className="mt-6 space-y-3 min-h-[110px]">
+                <div className="mt-6 min-h-[110px] space-y-3">
                   {plan.points.map((point) => (
                     <div key={point} className="flex items-start gap-3">
                       <span
