@@ -169,7 +169,7 @@ export default function PricesSection({
                 <div className="mt-3 min-h-[20px] text-center text-xs">
                   {isSelected ? (
                     <span className="text-emerald-300">
-                      Этот тариф уже подставлен в форму заказа ниже
+                      Этот тариф уже подставлен в форму заказа
                     </span>
                   ) : (
                     <span className="text-transparent">.</span>
