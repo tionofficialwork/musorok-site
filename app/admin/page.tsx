@@ -134,6 +134,23 @@ function sortOrdersByPriority(list: OrderRow[]) {
   });
 }
 
+function matchesSearch(order: OrderRow, query: string) {
+  const normalizedQuery = query.trim().toLowerCase();
+
+  if (!normalizedQuery) return true;
+
+  const haystack = [
+    order.phone ?? "",
+    order.address ?? "",
+    order.comment ?? "",
+    order.package_label ?? "",
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(normalizedQuery);
+}
+
 async function copy(text: string | null) {
   if (!text) return;
 
@@ -193,6 +210,7 @@ export default function AdminPage() {
   const [realtimeStatus, setRealtimeStatus] =
     useState<RealtimeStatus>("connecting");
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const hasLoadedInitialOrdersRef = useRef(false);
@@ -215,11 +233,13 @@ export default function AdminPage() {
       if (error) {
         console.error("Не удалось загрузить заказы:", error.message);
         setOrders([]);
+
         if (mode === "manual") {
           setRefreshing(false);
         } else {
           setLoading(false);
         }
+
         return;
       }
 
@@ -239,36 +259,7 @@ export default function AdminPage() {
   );
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function initialLoad() {
-      setLoading(true);
-
-      const { data, error } = await supabase
-        .from("orders")
-        .select(
-          "id,status,address,package_label,apartment,entrance,comment,leave_at_door,phone,payment_method,total,created_at"
-        )
-        .order("created_at", { ascending: false });
-
-      if (!isMounted) return;
-
-      if (error) {
-        console.error("Не удалось загрузить заказы:", error.message);
-        setOrders([]);
-        setLoading(false);
-        return;
-      }
-
-      const loadedOrders = (data ?? []) as OrderRow[];
-      setOrders(loadedOrders);
-      knownOrderIdsRef.current = new Set(loadedOrders.map((order) => order.id));
-      hasLoadedInitialOrdersRef.current = true;
-      setLastSyncedAt(new Date());
-      setLoading(false);
-    }
-
-    initialLoad();
+    loadOrders("initial");
 
     const channel = supabase
       .channel("orders")
@@ -341,10 +332,9 @@ export default function AdminPage() {
       });
 
     return () => {
-      isMounted = false;
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [loadOrders]);
 
   async function handleManualRefresh() {
     await loadOrders("manual");
@@ -371,10 +361,15 @@ export default function AdminPage() {
     setUpdatingOrderId(null);
   }
 
+  const searchedOrders = useMemo(
+    () => orders.filter((order) => matchesSearch(order, searchQuery)),
+    [orders, searchQuery]
+  );
+
   const attentionOrders = useMemo(
     () =>
       sortOrdersByPriority(
-        orders.filter(
+        searchedOrders.filter(
           (order) =>
             order.status === "new" ||
             order.status === "assigned" ||
@@ -382,36 +377,38 @@ export default function AdminPage() {
             order.status === "arrived"
         )
       ),
-    [orders]
+    [searchedOrders]
   );
 
   const newOrders = useMemo(
     () =>
-      sortOrdersByPriority(orders.filter((order) => order.status === "new")),
-    [orders]
+      sortOrdersByPriority(
+        searchedOrders.filter((order) => order.status === "new")
+      ),
+    [searchedOrders]
   );
 
   const activeOrders = useMemo(
     () =>
       sortOrdersByPriority(
-        orders.filter(
+        searchedOrders.filter(
           (order) =>
             order.status === "assigned" ||
             order.status === "on_the_way" ||
             order.status === "arrived"
         )
       ),
-    [orders]
+    [searchedOrders]
   );
 
   const finishedOrders = useMemo(
     () =>
       sortOrdersByPriority(
-        orders.filter(
+        searchedOrders.filter(
           (order) => order.status === "done" || order.status === "cancelled"
         )
       ),
-    [orders]
+    [searchedOrders]
   );
 
   return (
@@ -431,43 +428,64 @@ export default function AdminPage() {
         </div>
 
         {!loading && (
-          <section className="sticky top-4 z-20 mb-8 rounded-3xl border border-white/10 bg-[#151617]/90 p-4 backdrop-blur">
-            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:flex-1">
-                <CounterCard label="Новые" value={newOrders.length} tone="sky" />
-                <CounterCard
-                  label="В работе"
-                  value={activeOrders.length}
-                  tone="amber"
+          <>
+            <section className="mb-6">
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                <label className="mb-2 block text-sm text-white/55">
+                  Поиск по заказам
+                </label>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Телефон, адрес, комментарий, тариф..."
+                  className="w-full rounded-2xl border border-white/10 bg-[#1b1c1d] px-4 py-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/20"
                 />
-                <CounterCard
-                  label="Требуют внимания"
-                  value={attentionOrders.length}
-                  tone="red"
-                />
-                <CounterCard
-                  label="Завершенные"
-                  value={finishedOrders.length}
-                  tone="emerald"
-                />
-                <CounterCard label="Всего" value={orders.length} tone="neutral" />
               </div>
+            </section>
 
-              <div className="flex flex-col gap-3 lg:w-[260px]">
-                <RealtimeBadge status={realtimeStatus} />
-                <button
-                  onClick={handleManualRefresh}
-                  disabled={refreshing}
-                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {refreshing ? "Обновляем..." : "Обновить"}
-                </button>
-                <div className="text-xs text-white/45">
-                  Последняя синхронизация: {formatTime(lastSyncedAt)}
+            <section className="sticky top-4 z-20 mb-8 rounded-3xl border border-white/10 bg-[#151617]/90 p-4 backdrop-blur">
+              <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:flex-1">
+                  <CounterCard label="Новые" value={newOrders.length} tone="sky" />
+                  <CounterCard
+                    label="В работе"
+                    value={activeOrders.length}
+                    tone="amber"
+                  />
+                  <CounterCard
+                    label="Требуют внимания"
+                    value={attentionOrders.length}
+                    tone="red"
+                  />
+                  <CounterCard
+                    label="Завершенные"
+                    value={finishedOrders.length}
+                    tone="emerald"
+                  />
+                  <CounterCard
+                    label="Всего найдено"
+                    value={searchedOrders.length}
+                    tone="neutral"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-3 lg:w-[260px]">
+                  <RealtimeBadge status={realtimeStatus} />
+                  <button
+                    onClick={handleManualRefresh}
+                    disabled={refreshing}
+                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {refreshing ? "Обновляем..." : "Обновить"}
+                  </button>
+                  <div className="text-xs text-white/45">
+                    Последняя синхронизация: {formatTime(lastSyncedAt)}
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
+          </>
         )}
 
         {!loading && attentionOrders.length > 0 && (
@@ -529,9 +547,9 @@ export default function AdminPage() {
               updatingOrderId={updatingOrderId}
             />
 
-            {orders.length === 0 && (
+            {searchedOrders.length === 0 && (
               <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-white/60">
-                Заказов пока нет.
+                Ничего не найдено по текущему запросу.
               </div>
             )}
           </>
