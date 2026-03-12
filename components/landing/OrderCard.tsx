@@ -65,6 +65,8 @@ export default function OrderCard(props: OrderCardProps) {
 
   const showTrustBlock =
     props.submitStatus !== "success" && props.orderStep === 1;
+  const showStepIndicator =
+    props.submitStatus !== "success" && props.orderStep > 1;
 
   return (
     <div className="relative lg:flex lg:justify-end">
@@ -89,6 +91,47 @@ export default function OrderCard(props: OrderCardProps) {
                   <p className="mt-3 text-sm leading-6 text-white/62">
                     Заполните форму по шагам — без сложной регистрации и лишних
                     действий. Сначала адрес и пакет, потом детали заказа.
+                  </p>
+                </div>
+              )}
+
+              {showStepIndicator && (
+                <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">
+                        Оформление заказа
+                      </div>
+                      <div className="mt-1 text-sm font-medium text-white/75">
+                        Шаг {props.orderStep} из 3
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {[1, 2, 3].map((step) => {
+                        const isActive = props.orderStep === step;
+                        const isDone = props.orderStep > step;
+
+                        return (
+                          <div
+                            key={step}
+                            className={`h-2.5 w-10 rounded-full transition ${
+                              isActive
+                                ? "bg-white"
+                                : isDone
+                                ? "bg-emerald-400"
+                                : "bg-white/12"
+                            }`}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <p className="mt-3 text-sm leading-6 text-white/58">
+                    {props.orderStep === 2
+                      ? "Добавьте детали заказа и контакты, чтобы перейти к подтверждению."
+                      : "Проверьте способ оплаты, чаевые и итог заказа перед оформлением."}
                   </p>
                 </div>
               )}
