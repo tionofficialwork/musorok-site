@@ -7,17 +7,25 @@ declare global {
   }
 }
 
+type UseYandexMapParams = {
+  isEnabled: boolean;
+  apiKey?: string;
+  onStatusChange: (status: MapStatus) => void;
+  onAddressSelect: (address: string) => void;
+};
+
+const KRASNODAR_CENTER = [45.03547, 38.975313] as const;
+
+function formatFallbackAddress(coords: number[]) {
+  return `Краснодар, ${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`;
+}
+
 export function useYandexMap({
   isEnabled,
   apiKey,
   onStatusChange,
   onAddressSelect,
-}: {
-  isEnabled: boolean;
-  apiKey?: string;
-  onStatusChange: (status: MapStatus) => void;
-  onAddressSelect: (address: string) => void;
-}) {
+}: UseYandexMapParams) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
   const placemarkRef = useRef<any>(null);
@@ -32,24 +40,30 @@ export function useYandexMap({
     }
 
     const initializeMap = () => {
-      if (!window.ymaps || !mapContainerRef.current || mapInstanceRef.current) return;
+      if (!window.ymaps || !mapContainerRef.current || mapInstanceRef.current) {
+        return;
+      }
 
       onStatusChange("loading");
 
       window.ymaps.ready(() => {
-        if (!mapContainerRef.current || mapInstanceRef.current) return;
-
-        const center = [45.03547, 38.975313];
+        if (!mapContainerRef.current || mapInstanceRef.current) {
+          return;
+        }
 
         const map = new window.ymaps.Map(mapContainerRef.current, {
-          center,
+          center: KRASNODAR_CENTER,
           zoom: 12,
           controls: ["zoomControl", "geolocationControl"],
         });
 
-        const placemark = new window.ymaps.Placemark(center, {}, {
-          preset: "islands#blackDotIcon",
-        });
+        const placemark = new window.ymaps.Placemark(
+          KRASNODAR_CENTER,
+          {},
+          {
+            preset: "islands#blackDotIcon",
+          }
+        );
 
         map.geoObjects.add(placemark);
 
@@ -70,13 +84,12 @@ export function useYandexMap({
               const firstGeoObject = result.geoObjects.get(0);
               const address = firstGeoObject
                 ? firstGeoObject.getAddressLine()
-                : `Краснодар, ${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`;
+                : formatFallbackAddress(coords);
 
               onAddressSelect(address);
             })
             .catch(() => {
-              const address = `Краснодар, ${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`;
-              onAddressSelect(address);
+              onAddressSelect(formatFallbackAddress(coords));
             });
         });
       });
@@ -87,7 +100,9 @@ export function useYandexMap({
       return;
     }
 
-    if (scriptLoadedRef.current) return;
+    if (scriptLoadedRef.current) {
+      return;
+    }
 
     scriptLoadedRef.current = true;
     onStatusChange("loading");
@@ -97,6 +112,7 @@ export function useYandexMap({
     script.async = true;
     script.onload = initializeMap;
     script.onerror = () => onStatusChange("fallback");
+
     document.body.appendChild(script);
 
     return () => {

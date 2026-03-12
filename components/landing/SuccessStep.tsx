@@ -1,30 +1,39 @@
+import type { SuccessStepProps } from "@/lib/types";
+
 export default function SuccessStep({
   message,
   onNewOrder,
-}: {
-  message: string;
-  onNewOrder: () => void;
-}) {
+}: SuccessStepProps) {
   return (
-    <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-5 text-center lg:p-6">
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white text-3xl text-black">
+    <div className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 text-center">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white text-2xl text-black">
         ✓
       </div>
 
-      <h3 className="mt-5 text-2xl font-black">Заказ оформлен</h3>
+      <div>
+        <h3 className="text-xl font-bold">Заказ отправлен</h3>
+        <p className="mt-2 text-sm text-white/65">{message}</p>
+        <p className="mt-3 text-sm text-white/45">
+          Мы сохранили заявку. Следующим шагом можно будет показывать статус заказа,
+          назначение исполнителя и примерное время выполнения.
+        </p>
+      </div>
 
-      <p className="mt-3 text-sm leading-6 text-white/65">{message}</p>
-
-      <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-left text-sm text-white/75">
-        Исполнитель увидит заказ в списке и сможет взять его в работу.
+      <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-left">
+        <p className="text-sm font-medium text-white/75">Что дальше</p>
+        <ul className="mt-2 space-y-1 text-sm text-white/50">
+          <li>• Заказ уже записан в базу данных</li>
+          <li>• Следующий этап MVP — панель исполнителя или админка</li>
+          <li>• Потом можно добавить статусы: новый, принят, выполнен</li>
+        </ul>
       </div>
 
       <button
         type="button"
         onClick={onNewOrder}
-        className="mt-6 w-full rounded-2xl bg-white px-5 py-3.5 font-bold text-black transition hover:scale-[1.01]"
+        className="w-full rounded-2xl bg-white px-5 py-3.5 font-bold text-black transition hover:scale-[1.01]"
       >
-        Оформить еще один заказ
+        Создать новый заказ
       </button>
     </div>
   );

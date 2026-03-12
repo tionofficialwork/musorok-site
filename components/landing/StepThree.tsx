@@ -1,5 +1,12 @@
-import ToggleButton from "@/components/landing/ToggleButton";
-import type { PaymentMethod, SubmitStatus } from "@/lib/types";
+import type { PaymentMethod, StepThreeProps } from "@/lib/types";
+
+const paymentOptions: { id: PaymentMethod; label: string }[] = [
+  { id: "card", label: "Карта" },
+  { id: "cash", label: "Наличные" },
+  { id: "sbp", label: "СБП" },
+];
+
+const tipOptions = [0, 49, 99, 149];
 
 export default function StepThree({
   paymentMethod,
@@ -16,116 +23,133 @@ export default function StepThree({
   onPay,
   submitStatus,
   submitMessage,
-}: {
-  paymentMethod: PaymentMethod;
-  tip: number;
-  customTip: string;
-  total: number;
-  packageLabel: string;
-  apartment: string;
-  entrance: string;
-  setPaymentMethod: (value: PaymentMethod) => void;
-  setTip: (value: number) => void;
-  setCustomTip: (value: string) => void;
-  onBack: () => void;
-  onPay: () => void;
-  submitStatus: SubmitStatus;
-  submitMessage: string;
-}) {
-  const presetTips = [0, 50, 100];
+}: StepThreeProps) {
+  const isSubmitting = submitStatus === "submitting";
+  const hasError = submitStatus === "error" && Boolean(submitMessage);
 
   return (
-    <div>
-      <div className="grid gap-3">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4">
-          <p className="text-sm text-white/50">Ваш заказ</p>
-          <div className="mt-3 space-y-1 text-sm text-white/80">
-            <p>{packageLabel}</p>
-            {apartment && <p>кв. {apartment}</p>}
-            {entrance && <p>подъезд {entrance}</p>}
-          </div>
-        </div>
+    <div className="space-y-3">
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+        <p className="text-sm text-white/50">Способ оплаты</p>
 
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4">
-          <p className="text-sm text-white/50">Способ оплаты</p>
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <ToggleButton active={paymentMethod === "card"} onClick={() => setPaymentMethod("card")}>
-              Картой
-            </ToggleButton>
-            <ToggleButton active={paymentMethod === "cash"} onClick={() => setPaymentMethod("cash")}>
-              Наличные
-            </ToggleButton>
-            <ToggleButton active={paymentMethod === "sbp"} onClick={() => setPaymentMethod("sbp")}>
-              СБП
-            </ToggleButton>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4">
-          <p className="text-sm text-white/50">Чаевые</p>
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {presetTips.map((value) => (
-              <ToggleButton
-                key={value}
-                active={tip === value && customTip === ""}
-                onClick={() => {
-                  setCustomTip("");
-                  setTip(value);
-                }}
-              >
-                {value === 0 ? "Без чаевых" : `${value} ₽`}
-              </ToggleButton>
-            ))}
-          </div>
-
-          <div className="mt-3">
-            <input
-              value={customTip}
-              onChange={(e) => {
-                const value = e.target.value.replace(/[^0-9]/g, "");
-                setCustomTip(value);
-                setTip(value ? Number(value) : 0);
-              }}
-              placeholder="Своя сумма чаевых"
-              className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white placeholder:text-white/35 outline-none transition focus:border-white/25"
-            />
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-white/10 bg-white p-4 text-black">
-          <p className="text-sm text-black/45">Итого</p>
-          <p className="mt-2 text-4xl font-black">{total} ₽</p>
-          <p className="mt-2 text-sm text-black/60">Стоимость заказа с учетом чаевых</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          {paymentOptions.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setPaymentMethod(item.id)}
+              className={`rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                paymentMethod === item.id
+                  ? "bg-white text-black"
+                  : "bg-white/5 text-white hover:bg-white/10"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+        <p className="text-sm text-white/50">Чаевые исполнителю</p>
+
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {tipOptions.map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => {
+                setTip(value);
+                setCustomTip(value === 0 ? "" : String(value));
+              }}
+              className={`rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                tip === value
+                  ? "bg-white text-black"
+                  : "bg-white/5 text-white hover:bg-white/10"
+              }`}
+            >
+              {value === 0 ? "Без чаевых" : `${value} ₽`}
+            </button>
+          ))}
+        </div>
+
+        <input
+          value={customTip}
+          onChange={(e) => {
+            const value = e.target.value.replace(/\D/g, "");
+            setCustomTip(value);
+            setTip(value ? Number(value) : 0);
+          }}
+          placeholder="Или введите свою сумму"
+          inputMode="numeric"
+          className="mt-3 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition placeholder:text-white/25 focus:border-white/25"
+        />
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+        <p className="text-sm text-white/50">Итог заказа</p>
+
+        <div className="mt-3 space-y-2 text-sm text-white/70">
+          <div className="flex items-center justify-between gap-3">
+            <span>Тариф</span>
+            <span className="text-right">{packageLabel}</span>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <span>Квартира</span>
+            <span className="text-right">{apartment || "Не указана"}</span>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <span>Подъезд</span>
+            <span className="text-right">{entrance || "Не указан"}</span>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <span>Чаевые</span>
+            <span className="text-right">{tip} ₽</span>
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
+          <span className="text-base font-semibold">К оплате</span>
+          <span className="text-2xl font-black">{total} ₽</span>
+        </div>
+      </div>
+
+      {hasError ? (
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3">
+          <p className="text-sm font-medium text-red-200">{submitMessage}</p>
+        </div>
+      ) : null}
+
+      <div className="flex gap-3">
         <button
           type="button"
           onClick={onBack}
-          className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3.5 font-semibold text-white transition hover:bg-white/10"
+          disabled={isSubmitting}
+          className={`w-full rounded-2xl border px-5 py-3.5 font-bold transition ${
+            isSubmitting
+              ? "cursor-not-allowed border-white/5 bg-white/5 text-white/35"
+              : "border-white/10 bg-white/5 hover:bg-white/10"
+          }`}
         >
           Назад
         </button>
+
         <button
           type="button"
           onClick={onPay}
-          disabled={submitStatus === "submitting"}
-          className={`rounded-2xl px-5 py-3.5 font-bold transition ${
-            submitStatus === "submitting"
-              ? "cursor-wait bg-white/30 text-black/50"
+          disabled={isSubmitting}
+          className={`w-full rounded-2xl px-5 py-3.5 font-bold transition ${
+            isSubmitting
+              ? "cursor-not-allowed bg-white/30 text-black/50"
               : "bg-white text-black hover:scale-[1.01]"
           }`}
         >
-          {submitStatus === "submitting" ? "Сохраняем заказ..." : "Оплатить"}
+          {isSubmitting ? "Отправляем..." : "Оформить заказ"}
         </button>
       </div>
-
-      {submitStatus !== "idle" && (
-        <p className={`mt-3 text-sm ${submitStatus === "error" ? "text-red-400" : "text-white/60"}`}>
-          {submitMessage}
-        </p>
-      )}
     </div>
   );
 }

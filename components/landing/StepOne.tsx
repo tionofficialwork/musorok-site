@@ -1,5 +1,5 @@
 import { prices } from "@/lib/constants";
-import type { PriceOption } from "@/lib/types";
+import type { StepOneProps } from "@/lib/types";
 
 export default function StepOne({
   selectedPackageId,
@@ -7,18 +7,15 @@ export default function StepOne({
   selectedPrice,
   addressSelected,
   onContinue,
-}: {
-  selectedPackageId: string;
-  setSelectedPackageId: (value: string) => void;
-  selectedPrice: PriceOption;
-  addressSelected: boolean;
-  onContinue: () => void;
-}) {
+}: StepOneProps) {
+  const canContinue = Boolean(selectedPackageId) && addressSelected;
+
   return (
     <div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4">
           <p className="text-sm text-white/50">Пакеты</p>
+
           <div className="mt-3 grid gap-2">
             {prices.map((item) => (
               <button
@@ -47,15 +44,21 @@ export default function StepOne({
       <button
         type="button"
         onClick={onContinue}
-        disabled={!selectedPackageId || !addressSelected}
+        disabled={!canContinue}
         className={`mt-4 w-full rounded-2xl px-5 py-3.5 font-bold transition ${
-          !selectedPackageId || !addressSelected
+          !canContinue
             ? "cursor-not-allowed bg-white/30 text-black/50"
             : "bg-white text-black hover:scale-[1.01]"
         }`}
       >
         Продолжить
       </button>
+
+      {!addressSelected ? (
+        <p className="mt-2 text-sm text-white/45">
+          Сначала выберите адрес на карте или введите его вручную.
+        </p>
+      ) : null}
     </div>
   );
 }

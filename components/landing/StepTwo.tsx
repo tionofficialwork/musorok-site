@@ -1,5 +1,45 @@
-import ToggleButton from "@/components/landing/ToggleButton";
-import type { YesNo } from "@/lib/types";
+import type { StepTwoProps } from "@/lib/types";
+
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+
+  if (!digits) return "";
+
+  const normalized =
+    digits.startsWith("7")
+      ? digits
+      : digits.startsWith("8")
+        ? `7${digits.slice(1)}`
+        : `7${digits}`;
+
+  const trimmed = normalized.slice(0, 11);
+  const country = "+7";
+  const part1 = trimmed.slice(1, 4);
+  const part2 = trimmed.slice(4, 7);
+  const part3 = trimmed.slice(7, 9);
+  const part4 = trimmed.slice(9, 11);
+
+  let result = country;
+
+  if (part1) result += ` (${part1}`;
+  if (part1.length === 3) result += ")";
+  if (part2) result += ` ${part2}`;
+  if (part3) result += `-${part3}`;
+  if (part4) result += `-${part4}`;
+
+  return result;
+}
+
+function normalizePhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+
+  if (!digits) return "";
+
+  if (digits.startsWith("7")) return digits.slice(0, 11);
+  if (digits.startsWith("8")) return `7${digits.slice(1, 11)}`;
+
+  return `7${digits}`.slice(0, 11);
+}
 
 export default function StepTwo({
   apartment,
@@ -16,105 +56,144 @@ export default function StepTwo({
   setShouldCall,
   onBack,
   onContinue,
-}: {
-  apartment: string;
-  entrance: string;
-  comment: string;
-  leaveAtDoor: YesNo;
-  phone: string;
-  shouldCall: YesNo;
-  setApartment: (value: string) => void;
-  setEntrance: (value: string) => void;
-  setComment: (value: string) => void;
-  setLeaveAtDoor: (value: YesNo) => void;
-  setPhone: (value: string) => void;
-  setShouldCall: (value: YesNo) => void;
-  onBack: () => void;
-  onContinue: () => void;
-}) {
+}: StepTwoProps) {
+  const normalizedPhone = normalizePhone(phone);
+  const hasValidPhone = normalizedPhone.length === 11;
+  const hasApartment = apartment.trim().length > 0;
+  const canContinue = hasValidPhone && hasApartment;
+
   return (
-    <div>
-      <div className="grid gap-3">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4">
-            <p className="text-sm text-white/50">Квартира</p>
-            <input
-              value={apartment}
-              onChange={(e) => setApartment(e.target.value)}
-              placeholder="Например: 55"
-              className="mt-3 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white placeholder:text-white/35 outline-none transition focus:border-white/25"
-            />
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4">
-            <p className="text-sm text-white/50">Подъезд</p>
-            <input
-              value={entrance}
-              onChange={(e) => setEntrance(e.target.value)}
-              placeholder="Например: 2"
-              className="mt-3 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white placeholder:text-white/35 outline-none transition focus:border-white/25"
-            />
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4">
-          <p className="text-sm text-white/50">Комментарий курьеру</p>
-          <textarea
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="Например: домофон не работает, пакет у двери"
-            rows={2}
-            className="mt-3 w-full resize-none rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white placeholder:text-white/35 outline-none transition focus:border-white/25"
+    <div className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block">
+          <span className="mb-2 block text-sm text-white/55">Квартира</span>
+          <input
+            value={apartment}
+            onChange={(e) => setApartment(e.target.value)}
+            placeholder="Например, 145"
+            className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition placeholder:text-white/25 focus:border-white/25"
           />
+          {!hasApartment && apartment !== "" ? (
+            <p className="mt-2 text-xs text-white/45">
+              Укажите номер квартиры.
+            </p>
+          ) : null}
+        </label>
+
+        <label className="block">
+          <span className="mb-2 block text-sm text-white/55">Подъезд</span>
+          <input
+            value={entrance}
+            onChange={(e) => setEntrance(e.target.value)}
+            placeholder="Например, 2"
+            className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition placeholder:text-white/25 focus:border-white/25"
+          />
+        </label>
+      </div>
+
+      <label className="block">
+        <span className="mb-2 block text-sm text-white/55">Телефон</span>
+        <input
+          value={formatPhone(phone)}
+          onChange={(e) => {
+            const digits = e.target.value.replace(/\D/g, "");
+            const normalized =
+              digits.startsWith("7")
+                ? digits
+                : digits.startsWith("8")
+                  ? `7${digits.slice(1)}`
+                  : digits
+                    ? `7${digits}`
+                    : "";
+
+            setPhone(normalized.slice(0, 11));
+          }}
+          placeholder="+7 (999) 123-45-67"
+          inputMode="tel"
+          className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition placeholder:text-white/25 focus:border-white/25"
+        />
+        {!hasValidPhone && phone ? (
+          <p className="mt-2 text-xs text-white/45">
+            Введите полный номер телефона в формате +7 (999) 123-45-67
+          </p>
+        ) : null}
+      </label>
+
+      <label className="block">
+        <span className="mb-2 block text-sm text-white/55">Комментарий</span>
+        <textarea
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="Например, мусор у двери, домофон не работает"
+          rows={3}
+          className="w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition placeholder:text-white/25 focus:border-white/25"
+        />
+      </label>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+          <p className="text-sm text-white/55">Оставить у двери?</p>
+
+          <div className="mt-3 flex gap-2">
+            {(["yes", "no"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setLeaveAtDoor(value)}
+                className={`flex-1 rounded-xl px-4 py-2 text-sm font-medium transition ${
+                  leaveAtDoor === value
+                    ? "bg-white text-black"
+                    : "bg-white/5 text-white hover:bg-white/10"
+                }`}
+              >
+                {value === "yes" ? "Да" : "Нет"}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4">
-            <p className="text-sm text-white/50">Забрать у двери?</p>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <ToggleButton active={leaveAtDoor === "yes"} onClick={() => setLeaveAtDoor("yes")}>
-                Да
-              </ToggleButton>
-              <ToggleButton active={leaveAtDoor === "no"} onClick={() => setLeaveAtDoor("no")}>
-                Нет
-              </ToggleButton>
-            </div>
-          </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+          <p className="text-sm text-white/55">Нужно позвонить?</p>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3 lg:p-4">
-            <p className="text-sm text-white/50">Телефон для связи</p>
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Например: +7 (999) 123-45-67"
-              className="mt-3 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white placeholder:text-white/35 outline-none transition focus:border-white/25"
-            />
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <ToggleButton active={shouldCall === "yes"} onClick={() => setShouldCall("yes")}>
-                Позвонить
-              </ToggleButton>
-              <ToggleButton active={shouldCall === "no"} onClick={() => setShouldCall("no")}>
-                Не звонить
-              </ToggleButton>
-            </div>
+          <div className="mt-3 flex gap-2">
+            {(["yes", "no"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setShouldCall(value)}
+                className={`flex-1 rounded-xl px-4 py-2 text-sm font-medium transition ${
+                  shouldCall === value
+                    ? "bg-white text-black"
+                    : "bg-white/5 text-white hover:bg-white/10"
+                }`}
+              >
+                {value === "yes" ? "Да" : "Нет"}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div className="flex gap-3">
         <button
           type="button"
           onClick={onBack}
-          className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3.5 font-semibold text-white transition hover:bg-white/10"
+          className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-3.5 font-bold transition hover:bg-white/10"
         >
           Назад
         </button>
+
         <button
           type="button"
           onClick={onContinue}
-          className="rounded-2xl bg-white px-5 py-3.5 font-bold text-black transition hover:scale-[1.01]"
+          disabled={!canContinue}
+          className={`w-full rounded-2xl px-5 py-3.5 font-bold transition ${
+            !canContinue
+              ? "cursor-not-allowed bg-white/30 text-black/50"
+              : "bg-white text-black hover:scale-[1.01]"
+          }`}
         >
-          К оплате
+          Далее
         </button>
       </div>
     </div>

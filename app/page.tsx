@@ -1,82 +1,90 @@
 "use client";
 
 import { useEffect } from "react";
+import AudienceOfferSection from "@/components/landing/AudienceOfferSection";
+import CtaSection from "@/components/landing/CtaSection";
+import FloatingButtons from "@/components/landing/FloatingButtons";
+import Footer from "@/components/landing/Footer";
+import FaqSection from "@/components/landing/FaqSection";
 import Header from "@/components/landing/Header";
 import HeroCopy from "@/components/landing/HeroCopy";
-import OrderCard from "@/components/landing/OrderCard";
-import AudienceOfferSection from "@/components/landing/AudienceOfferSection";
-import FaqSection from "@/components/landing/FaqSection";
 import HowItWorksSection from "@/components/landing/HowItWorksSection";
+import OrderCard from "@/components/landing/OrderCard";
 import PricesSection from "@/components/landing/PricesSection";
-import CtaSection from "@/components/landing/CtaSection";
-import Footer from "@/components/landing/Footer";
-import FloatingButtons from "@/components/landing/FloatingButtons";
-import { useYandexMap } from "@/hooks/useYandexMap";
 import { useOrderForm } from "@/hooks/useOrderForm";
+import { useYandexMap } from "@/hooks/useYandexMap";
 import { YANDEX_MAPS_API_KEY } from "@/lib/constants";
 
 export default function Home() {
-  const {
-    showTopButton,
-    setShowTopButton,
-    isAddressOpen,
-    setIsAddressOpen,
-    addressMode,
-    setAddressMode,
-    manualAddress,
-    setManualAddress,
-    setSelectedMapAddress,
-    selectedPackageId,
-    setSelectedPackageId,
-    selectedPrice,
-    orderStep,
-    setOrderStep,
-    apartment,
-    setApartment,
-    entrance,
-    setEntrance,
-    comment,
-    setComment,
-    leaveAtDoor,
-    setLeaveAtDoor,
-    phone,
-    setPhone,
-    shouldCall,
-    setShouldCall,
-    paymentMethod,
-    setPaymentMethod,
-    tip,
-    setTip,
-    customTip,
-    setCustomTip,
-    mapStatus,
-    setMapStatus,
-    submitStatus,
-    submitMessage,
-    total,
-    addressLabel,
-    resetOrderForm,
-    handleCreateOrder,
-  } = useOrderForm();
+  const { ui, address, packageSelection, details, payment, submit } =
+    useOrderForm();
 
   const { mapContainerRef } = useYandexMap({
-    isEnabled: isAddressOpen && addressMode === "map",
+    isEnabled: address.isAddressOpen && address.addressMode === "map",
     apiKey: YANDEX_MAPS_API_KEY,
-    onStatusChange: setMapStatus,
-    onAddressSelect: (address) => {
-      setSelectedMapAddress(address);
-      setIsAddressOpen(false);
+    onStatusChange: address.setMapStatus,
+    onAddressSelect: (addressValue) => {
+      address.setSelectedMapAddress(addressValue);
+      address.setIsAddressOpen(false);
     },
   });
 
   useEffect(() => {
     const handleScroll = () => {
-      setShowTopButton(window.scrollY > 400);
+      ui.setShowTopButton(window.scrollY > 400);
     };
 
     window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [setShowTopButton]);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [ui]);
+
+  const orderCardProps = {
+    isAddressOpen: address.isAddressOpen,
+    setIsAddressOpen: address.setIsAddressOpen,
+    addressMode: address.addressMode,
+    setAddressMode: address.setAddressMode,
+    addressLabel: address.addressLabel,
+    manualAddress: address.manualAddress,
+    setManualAddress: address.setManualAddress,
+    mapStatus: address.mapStatus,
+    mapContainerRef,
+    setSelectedMapAddress: address.setSelectedMapAddress,
+
+    selectedPackageId: packageSelection.selectedPackageId,
+    setSelectedPackageId: packageSelection.setSelectedPackageId,
+    selectedPrice: packageSelection.selectedPrice,
+    orderStep: packageSelection.orderStep,
+    setOrderStep: packageSelection.setOrderStep,
+
+    apartment: details.apartment,
+    entrance: details.entrance,
+    comment: details.comment,
+    leaveAtDoor: details.leaveAtDoor,
+    phone: details.phone,
+    shouldCall: details.shouldCall,
+    setApartment: details.setApartment,
+    setEntrance: details.setEntrance,
+    setComment: details.setComment,
+    setLeaveAtDoor: details.setLeaveAtDoor,
+    setPhone: details.setPhone,
+    setShouldCall: details.setShouldCall,
+
+    paymentMethod: payment.paymentMethod,
+    tip: payment.tip,
+    customTip: payment.customTip,
+    total: payment.total,
+    setPaymentMethod: payment.setPaymentMethod,
+    setTip: payment.setTip,
+    setCustomTip: payment.setCustomTip,
+
+    onSubmit: submit.handleCreateOrder,
+    onResetAfterSuccess: submit.resetOrderForm,
+    submitStatus: submit.submitStatus,
+    submitMessage: submit.submitMessage,
+  };
 
   return (
     <div id="top" className="min-h-screen bg-[#0f1011] text-white">
@@ -88,56 +96,16 @@ export default function Home() {
 
           <div className="mx-auto grid max-w-7xl gap-8 px-6 py-12 lg:h-full lg:grid-cols-[0.82fr_1.18fr] lg:items-center lg:px-8 lg:py-6">
             <HeroCopy />
-
-            <OrderCard
-              isAddressOpen={isAddressOpen}
-              setIsAddressOpen={setIsAddressOpen}
-              addressMode={addressMode}
-              setAddressMode={setAddressMode}
-              addressLabel={addressLabel}
-              manualAddress={manualAddress}
-              setManualAddress={setManualAddress}
-              mapStatus={mapStatus}
-              mapContainerRef={mapContainerRef}
-              setSelectedMapAddress={setSelectedMapAddress}
-              selectedPackageId={selectedPackageId}
-              setSelectedPackageId={setSelectedPackageId}
-              selectedPrice={selectedPrice}
-              orderStep={orderStep}
-              setOrderStep={setOrderStep}
-              apartment={apartment}
-              entrance={entrance}
-              comment={comment}
-              leaveAtDoor={leaveAtDoor}
-              phone={phone}
-              shouldCall={shouldCall}
-              paymentMethod={paymentMethod}
-              tip={tip}
-              customTip={customTip}
-              total={total}
-              setApartment={setApartment}
-              setEntrance={setEntrance}
-              setComment={setComment}
-              setLeaveAtDoor={setLeaveAtDoor}
-              setPhone={setPhone}
-              setShouldCall={setShouldCall}
-              setPaymentMethod={setPaymentMethod}
-              setTip={setTip}
-              setCustomTip={setCustomTip}
-              onSubmit={handleCreateOrder}
-              onResetAfterSuccess={resetOrderForm}
-              submitStatus={submitStatus}
-              submitMessage={submitMessage}
-            />
+            <OrderCard {...orderCardProps} />
           </div>
         </section>
 
         <HowItWorksSection />
 
         <PricesSection
-          selectedPackageId={selectedPackageId}
-          setSelectedPackageId={setSelectedPackageId}
-          setOrderStep={setOrderStep}
+          selectedPackageId={packageSelection.selectedPackageId}
+          setSelectedPackageId={packageSelection.setSelectedPackageId}
+          setOrderStep={packageSelection.setOrderStep}
         />
 
         <AudienceOfferSection />
@@ -146,7 +114,7 @@ export default function Home() {
       </main>
 
       <Footer />
-      <FloatingButtons showTopButton={showTopButton} />
+      <FloatingButtons showTopButton={ui.showTopButton} />
     </div>
   );
 }
