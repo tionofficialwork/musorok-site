@@ -70,6 +70,11 @@ function statusLabel(status: string | null) {
   }
 }
 
+function copyToClipboard(text: string | null) {
+  if (!text) return;
+  navigator.clipboard.writeText(text);
+}
+
 export default function AdminPage() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,27 +116,28 @@ export default function AdminPage() {
     const channel = supabase
       .channel("orders-realtime")
       .on(
-  	"postgres_changes",
- 	 {
- 	   event: "INSERT",
- 	   schema: "public",
-  	  table: "orders",
-	 },
-	 async (payload) => {
-   	  const orderId = payload.new.id;
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "orders",
+        },
+        async (payload) => {
+          const orderId = payload.new.id;
 
-    	  const { data } = await supabase
-      	    .from("orders")
-            .select(	"id,status,address,package_id,package_label,package_price,apartment,entrance,comment,leave_at_door,phone,should_call,payment_method,tip,total,created_at"
-      )
-      	    .eq("id", orderId)
+          const { data } = await supabase
+            .from("orders")
+            .select(
+              "id,status,address,package_id,package_label,package_price,apartment,entrance,comment,leave_at_door,phone,should_call,payment_method,tip,total,created_at"
+            )
+            .eq("id", orderId)
             .single();
 
-    if (!data) return;
+          if (!data) return;
 
-    setOrders((prev) => [data as OrderRow, ...prev]);
-  }
-)
+          setOrders((prev) => [data as OrderRow, ...prev]);
+        }
+      )
       .on(
         "postgres_changes",
         {
@@ -203,10 +209,6 @@ export default function AdminPage() {
               ← Назад на сайт
             </Link>
             <h1 className="mt-3 text-3xl font-black">Админка заказов</h1>
-            <p className="mt-2 text-sm text-white/55">
-              Простая MVP-страница для просмотра и обновления заявок из таблицы
-              orders.
-            </p>
           </div>
 
           <div className="w-full sm:w-[220px]">
@@ -225,37 +227,8 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="mb-4 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-            <p className="text-sm text-white/50">Всего заказов</p>
-            <p className="mt-2 text-3xl font-black">{orders.length}</p>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-            <p className="text-sm text-white/50">Новых</p>
-            <p className="mt-2 text-3xl font-black">
-              {orders.filter((order) => order.status === "new").length}
-            </p>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-            <p className="text-sm text-white/50">После фильтра</p>
-            <p className="mt-2 text-3xl font-black">{filteredOrders.length}</p>
-          </div>
-        </div>
-
         {loading ? (
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white/60">
-            Загружаем заказы...
-          </div>
-        ) : errorMessage ? (
-          <div className="rounded-3xl border border-red-500/30 bg-red-500/10 p-6 text-red-200">
-            {errorMessage}
-          </div>
-        ) : filteredOrders.length === 0 ? (
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white/60">
-            Заказов пока нет.
-          </div>
+          <div className="text-white/60">Загружаем заказы...</div>
         ) : (
           <div className="grid gap-4">
             {filteredOrders.map((order) => {
@@ -266,110 +239,70 @@ export default function AdminPage() {
                   key={order.id}
                   className="rounded-3xl border border-white/10 bg-white/5 p-5"
                 >
-                  <div className="flex flex-col gap-3 border-b border-white/10 pb-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-white/40">
-                        Заказ
-                      </p>
-                      <h2 className="mt-2 text-lg font-bold">
-                        {order.package_label || "Без тарифа"}
-                      </h2>
-                      <p className="mt-1 text-sm text-white/55">
-                        {order.address || "Адрес не указан"}
-                      </p>
-                    </div>
+                  <div className="flex flex-col gap-2">
+                    <h2 className="text-lg font-bold">
+                      {order.package_label || "Без тарифа"}
+                    </h2>
 
-                    <div className="flex flex-wrap gap-2">
-                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70">
-                        {statusLabel(order.status)}
-                      </span>
-                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70">
-                        {formatDate(order.created_at)}
-                      </span>
-                    </div>
-                  </div>
+                    <p className="text-white/60">
+                      {order.address || "Адрес не указан"}
+                    </p>
 
-                  <div className="mt-4 grid gap-3 text-sm text-white/70 sm:grid-cols-2 lg:grid-cols-4">
-                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                      <p className="text-xs text-white/40">Телефон</p>
-                      <p className="mt-1 font-medium text-white">
-                        {formatPhone(order.phone)}
-                      </p>
-                    </div>
+                    <p className="text-white/60">
+                      {formatPhone(order.phone)} • {order.total ?? 0} ₽
+                    </p>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                      <p className="text-xs text-white/40">К оплате</p>
-                      <p className="mt-1 font-medium text-white">
-                        {order.total ?? 0} ₽
-                      </p>
-                    </div>
+                    <div className="flex flex-wrap gap-2 mt-3">
 
-                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                      <p className="text-xs text-white/40">
-                        Квартира / подъезд
-                      </p>
-                      <p className="mt-1 font-medium text-white">
-                        {order.apartment || "—"} / {order.entrance || "—"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                      <p className="text-xs text-white/40">Оплата</p>
-                      <p className="mt-1 font-medium text-white">
-                        {order.payment_method || "—"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 grid gap-3 text-sm text-white/60 lg:grid-cols-3">
-                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                      <p className="text-xs text-white/40">Комментарий</p>
-                      <p className="mt-1">{order.comment || "Нет комментария"}</p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                      <p className="text-xs text-white/40">Оставить у двери</p>
-                      <p className="mt-1">
-                        {order.leave_at_door ? "Да" : "Нет"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                      <p className="text-xs text-white/40">Нужно позвонить</p>
-                      <p className="mt-1">
-                        {order.should_call ? "Да" : "Нет"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                      <div>
-                        <p className="text-xs text-white/40">Изменить статус</p>
-                        <p className="mt-1 text-sm text-white/55">
-                          Для MVP можно управлять заказом прямо из админки.
-                        </p>
-                      </div>
-
-                      <div className="w-full sm:w-[220px]">
-                        <select
-                          value={order.status ?? "new"}
-                          disabled={isUpdating}
-                          onChange={(e) =>
-                            handleStatusChange(
-                              order.id,
-                              e.target.value as OrderStatus
-                            )
-                          }
-                          className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition focus:border-white/25 disabled:cursor-not-allowed disabled:opacity-60"
+                      {order.phone && (
+                        <a
+                          href={`tel:${order.phone}`}
+                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs hover:bg-white/10"
                         >
-                          {statusOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                          📞 Позвонить
+                        </a>
+                      )}
+
+                      {order.address && (
+                        <a
+                          target="_blank"
+                          href={`https://yandex.ru/maps/?text=${encodeURIComponent(
+                            order.address
+                          )}`}
+                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs hover:bg-white/10"
+                        >
+                          🗺 Маршрут
+                        </a>
+                      )}
+
+                      {order.address && (
+                        <button
+                          onClick={() => copyToClipboard(order.address)}
+                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs hover:bg-white/10"
+                        >
+                          📋 Копировать
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="mt-4">
+                      <select
+                        value={order.status ?? "new"}
+                        disabled={isUpdating}
+                        onChange={(e) =>
+                          handleStatusChange(
+                            order.id,
+                            e.target.value as OrderStatus
+                          )
+                        }
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
+                      >
+                        {statusOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 </article>
