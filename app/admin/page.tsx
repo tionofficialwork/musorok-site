@@ -4,7 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
-type OrderStatus = "new" | "accepted" | "done" | "cancelled";
+type OrderStatus =
+  | "new"
+  | "assigned"
+  | "on_the_way"
+  | "arrived"
+  | "done"
+  | "cancelled";
 
 type OrderRow = {
   id: string;
@@ -27,7 +33,9 @@ type OrderRow = {
 
 const statusOptions: { value: OrderStatus; label: string }[] = [
   { value: "new", label: "Новый" },
-  { value: "accepted", label: "Принят" },
+  { value: "assigned", label: "Назначен" },
+  { value: "on_the_way", label: "В пути" },
+  { value: "arrived", label: "На месте" },
   { value: "done", label: "Выполнен" },
   { value: "cancelled", label: "Отменён" },
 ];
@@ -59,8 +67,12 @@ function statusLabel(status: string | null) {
   switch (status) {
     case "new":
       return "Новый";
-    case "accepted":
-      return "Принят";
+    case "assigned":
+      return "Назначен";
+    case "on_the_way":
+      return "В пути";
+    case "arrived":
+      return "На месте";
     case "done":
       return "Выполнен";
     case "cancelled":
@@ -70,9 +82,33 @@ function statusLabel(status: string | null) {
   }
 }
 
-function copyToClipboard(text: string | null) {
+function statusBadgeClass(status: string | null) {
+  switch (status) {
+    case "new":
+      return "border-sky-400/30 bg-sky-400/10 text-sky-200";
+    case "assigned":
+      return "border-violet-400/30 bg-violet-400/10 text-violet-200";
+    case "on_the_way":
+      return "border-amber-400/30 bg-amber-400/10 text-amber-200";
+    case "arrived":
+      return "border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-200";
+    case "done":
+      return "border-emerald-400/30 bg-emerald-400/10 text-emerald-200";
+    case "cancelled":
+      return "border-red-400/30 bg-red-400/10 text-red-200";
+    default:
+      return "border-white/10 bg-white/5 text-white/70";
+  }
+}
+
+async function copyToClipboard(text: string | null) {
   if (!text) return;
-  navigator.clipboard.writeText(text);
+
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    console.error("Не удалось скопировать адрес");
+  }
 }
 
 export default function AdminPage() {
@@ -135,7 +171,11 @@ export default function AdminPage() {
 
           if (!data) return;
 
-          setOrders((prev) => [data as OrderRow, ...prev]);
+          setOrders((prev) => {
+            const exists = prev.some((order) => order.id === data.id);
+            if (exists) return prev;
+            return [data as OrderRow, ...prev];
+          });
         }
       )
       .on(
@@ -182,7 +222,7 @@ export default function AdminPage() {
 
     if (error) {
       setErrorMessage(
-        "Не удалось обновить статус. Проверь update policy для таблицы orders."
+        "Не удалось обновить статус. Проверь update policy и тип поля status в таблице orders."
       );
       setUpdatingOrderId(null);
       return;
@@ -208,27 +248,62 @@ export default function AdminPage() {
             >
               ← Назад на сайт
             </Link>
+
             <h1 className="mt-3 text-3xl font-black">Админка заказов</h1>
+
+            <p className="mt-2 text-sm text-white/55">
+              Живая операционная панель для контроля заявок.
+            </p>
           </div>
 
-          <div className="w-full sm:w-[220px]">
-            <label className="mb-2 block text-sm text-white/55">Статус</label>
+          <div className="w-full sm:w-[240px]">
+            <label className="mb-2 block text-sm text-white/55">Фильтр по статусу</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition focus:border-white/25"
             >
               <option value="all">Все</option>
-              <option value="new">Новые</option>
-              <option value="accepted">Принятые</option>
-              <option value="done">Выполненные</option>
-              <option value="cancelled">Отменённые</option>
+              {statusOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>
 
+        <div className="mb-4 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+            <p className="text-sm text-white/50">Всего заказов</p>
+            <p className="mt-2 text-3xl font-black">{orders.length}</p>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+            <p className="text-sm text-white/50">Новых</p>
+            <p className="mt-2 text-3xl font-black">
+              {orders.filter((order) => order.status === "new").length}
+            </p>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+            <p className="text-sm text-white/50">После фильтра</p>
+            <p className="mt-2 text-3xl font-black">{filteredOrders.length}</p>
+          </div>
+        </div>
+
         {loading ? (
-          <div className="text-white/60">Загружаем заказы...</div>
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white/60">
+            Загружаем заказы...
+          </div>
+        ) : errorMessage ? (
+          <div className="rounded-3xl border border-red-500/30 bg-red-500/10 p-6 text-red-200">
+            {errorMessage}
+          </div>
+        ) : filteredOrders.length === 0 ? (
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white/60">
+            Заказов пока нет.
+          </div>
         ) : (
           <div className="grid gap-4">
             {filteredOrders.map((order) => {
@@ -239,70 +314,150 @@ export default function AdminPage() {
                   key={order.id}
                   className="rounded-3xl border border-white/10 bg-white/5 p-5"
                 >
-                  <div className="flex flex-col gap-2">
-                    <h2 className="text-lg font-bold">
-                      {order.package_label || "Без тарифа"}
-                    </h2>
+                  <div className="flex flex-col gap-3 border-b border-white/10 pb-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-white/40">
+                        Заказ
+                      </p>
 
-                    <p className="text-white/60">
-                      {order.address || "Адрес не указан"}
-                    </p>
+                      <h2 className="mt-2 text-lg font-bold">
+                        {order.package_label || "Без тарифа"}
+                      </h2>
 
-                    <p className="text-white/60">
-                      {formatPhone(order.phone)} • {order.total ?? 0} ₽
-                    </p>
-
-                    <div className="flex flex-wrap gap-2 mt-3">
-
-                      {order.phone && (
-                        <a
-                          href={`tel:${order.phone}`}
-                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs hover:bg-white/10"
-                        >
-                          📞 Позвонить
-                        </a>
-                      )}
-
-                      {order.address && (
-                        <a
-                          target="_blank"
-                          href={`https://yandex.ru/maps/?text=${encodeURIComponent(
-                            order.address
-                          )}`}
-                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs hover:bg-white/10"
-                        >
-                          🗺 Маршрут
-                        </a>
-                      )}
-
-                      {order.address && (
-                        <button
-                          onClick={() => copyToClipboard(order.address)}
-                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs hover:bg-white/10"
-                        >
-                          📋 Копировать
-                        </button>
-                      )}
+                      <p className="mt-1 text-sm text-white/55">
+                        {order.address || "Адрес не указан"}
+                      </p>
                     </div>
 
-                    <div className="mt-4">
-                      <select
-                        value={order.status ?? "new"}
-                        disabled={isUpdating}
-                        onChange={(e) =>
-                          handleStatusChange(
-                            order.id,
-                            e.target.value as OrderStatus
-                          )
-                        }
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
+                    <div className="flex flex-wrap gap-2">
+                      <span
+                        className={`rounded-full border px-3 py-1 text-xs ${statusBadgeClass(
+                          order.status
+                        )}`}
                       >
-                        {statusOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
+                        {statusLabel(order.status)}
+                      </span>
+
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70">
+                        {formatDate(order.created_at)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 text-sm text-white/70 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                      <p className="text-xs text-white/40">Телефон</p>
+                      <p className="mt-1 font-medium text-white">
+                        {formatPhone(order.phone)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                      <p className="text-xs text-white/40">К оплате</p>
+                      <p className="mt-1 font-medium text-white">
+                        {order.total ?? 0} ₽
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                      <p className="text-xs text-white/40">
+                        Квартира / подъезд
+                      </p>
+                      <p className="mt-1 font-medium text-white">
+                        {order.apartment || "—"} / {order.entrance || "—"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                      <p className="text-xs text-white/40">Оплата</p>
+                      <p className="mt-1 font-medium text-white">
+                        {order.payment_method || "—"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 text-sm text-white/60 lg:grid-cols-3">
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                      <p className="text-xs text-white/40">Комментарий</p>
+                      <p className="mt-1">{order.comment || "Нет комментария"}</p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                      <p className="text-xs text-white/40">Оставить у двери</p>
+                      <p className="mt-1">
+                        {order.leave_at_door ? "Да" : "Нет"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                      <p className="text-xs text-white/40">Нужно позвонить</p>
+                      <p className="mt-1">
+                        {order.should_call ? "Да" : "Нет"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {order.phone && (
+                      <a
+                        href={`tel:${order.phone}`}
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs transition hover:bg-white/10"
+                      >
+                        📞 Позвонить
+                      </a>
+                    )}
+
+                    {order.address && (
+                      <a
+                        target="_blank"
+                        rel="noreferrer"
+                        href={`https://yandex.ru/maps/?text=${encodeURIComponent(
+                          order.address
+                        )}`}
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs transition hover:bg-white/10"
+                      >
+                        🗺 Маршрут
+                      </a>
+                    )}
+
+                    {order.address && (
+                      <button
+                        onClick={() => copyToClipboard(order.address)}
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs transition hover:bg-white/10"
+                      >
+                        📋 Копировать адрес
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                      <div>
+                        <p className="text-xs text-white/40">Изменить статус</p>
+                        <p className="mt-1 text-sm text-white/55">
+                          Управление операционным этапом заказа.
+                        </p>
+                      </div>
+
+                      <div className="w-full sm:w-[240px]">
+                        <select
+                          value={order.status ?? "new"}
+                          disabled={isUpdating}
+                          onChange={(e) =>
+                            handleStatusChange(
+                              order.id,
+                              e.target.value as OrderStatus
+                            )
+                          }
+                          className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition focus:border-white/25 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {statusOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </article>
