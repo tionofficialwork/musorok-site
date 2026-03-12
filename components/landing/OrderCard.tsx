@@ -7,8 +7,7 @@ import type { OrderCardProps } from "@/lib/types";
 import { DEFAULT_ADDRESS_LABEL } from "@/lib/constants";
 
 export default function OrderCard(props: OrderCardProps) {
-  const isAddressSelected =
-    props.addressLabel !== DEFAULT_ADDRESS_LABEL;
+  const isAddressSelected = props.addressLabel !== DEFAULT_ADDRESS_LABEL;
 
   const addressSelectorProps = {
     isAddressOpen: props.isAddressOpen,
@@ -70,6 +69,26 @@ export default function OrderCard(props: OrderCardProps) {
         <div className="rounded-[1.75rem] border border-[#2c3807]/40 bg-[#1a2105] p-3 lg:h-full lg:overflow-hidden lg:p-4">
           <div className="mt-1 rounded-3xl border border-white/10 bg-[#17181a] p-3 lg:h-full lg:overflow-y-auto lg:p-4">
             <div className="space-y-3">
+              {props.submitStatus !== "success" && (
+                <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold text-emerald-300">
+                      Заказ без звонков
+                    </span>
+                    <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium text-white/75">
+                      Цена видна заранее
+                    </span>
+                    <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium text-white/75">
+                      Пара минут на оформление
+                    </span>
+                  </div>
+
+                  <p className="mt-3 text-sm leading-6 text-white/62">
+                    Заполните форму по шагам — без сложной регистрации и лишних
+                    действий. Сначала адрес и пакет, потом детали заказа.
+                  </p>
+                </div>
+              )}
 
               {props.orderStep === 1 && (
                 <AddressSelector {...addressSelectorProps} />
@@ -81,10 +100,7 @@ export default function OrderCard(props: OrderCardProps) {
                   onNewOrder={props.onResetAfterSuccess}
                 />
               ) : props.orderStep === 1 ? (
-                <StepOne
-                  {...stepOneProps}
-                  onContinue={goToStepTwo}
-                />
+                <StepOne {...stepOneProps} onContinue={goToStepTwo} />
               ) : props.orderStep === 2 ? (
                 <StepTwo
                   {...stepTwoProps}
@@ -98,7 +114,6 @@ export default function OrderCard(props: OrderCardProps) {
                   onPay={props.onSubmit}
                 />
               )}
-
             </div>
           </div>
         </div>
