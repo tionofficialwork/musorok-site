@@ -521,6 +521,29 @@ export default function AdminPage() {
               </div>
             </section>
 
+            <section className="mb-6">
+              <div className="flex flex-wrap gap-2">
+                {statusFilterOptions.map((option) => {
+                  const isActive = statusFilter === option.value;
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setStatusFilter(option.value)}
+                      className={`rounded-full border px-4 py-2 text-sm transition ${
+                        isActive
+                          ? "border-white/20 bg-white text-[#0f1011]"
+                          : "border-white/10 bg-white/5 text-white/75 hover:bg-white/10"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
             <section className="sticky top-4 z-20 mb-8 rounded-3xl border border-white/10 bg-[#151617]/90 p-4 backdrop-blur">
               <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:flex-1">
