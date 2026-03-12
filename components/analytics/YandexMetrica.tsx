@@ -2,7 +2,7 @@
 
 import Script from "next/script";
 import { useEffect } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 declare global {
   interface Window {
@@ -18,18 +18,17 @@ export default function YandexMetrica({
   counterId,
 }: YandexMetricaProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (!counterId) return;
     if (typeof window === "undefined") return;
     if (typeof window.ym !== "function") return;
 
-    const query = searchParams?.toString();
-    const url = query ? `${pathname}?${query}` : pathname;
+    const query = window.location.search || "";
+    const url = `${pathname}${query}`;
 
     window.ym(counterId, "hit", url);
-  }, [counterId, pathname, searchParams]);
+  }, [counterId, pathname]);
 
   return (
     <>
@@ -61,7 +60,7 @@ export default function YandexMetrica({
       <noscript>
         <div>
           <img
-            src={"https://mc.yandex.ru/watch/" + counterId}
+            src={`https://mc.yandex.ru/watch/${counterId}`}
             style={{ position: "absolute", left: "-9999px" }}
             alt=""
           />
