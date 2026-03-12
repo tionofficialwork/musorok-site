@@ -195,6 +195,19 @@ function matchesStatusFilter(order: OrderRow, filter: StatusFilter) {
   }
 }
 
+function isToday(dateString: string | null) {
+  if (!dateString) return false;
+
+  const date = new Date(dateString);
+  const now = new Date();
+
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
+}
+
 async function copy(text: string | null) {
   if (!text) return;
 
@@ -256,6 +269,7 @@ export default function AdminPage() {
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [todayOnly, setTodayOnly] = useState(false);
 
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const hasLoadedInitialOrdersRef = useRef(false);
@@ -444,6 +458,14 @@ export default function AdminPage() {
     [orders]
   );
 
+  const newTodayCount = useMemo(
+    () =>
+      orders.filter(
+        (order) => order.status === "new" && isToday(order.created_at)
+      ).length,
+    [orders]
+  );
+
   const chipCounts: Record<StatusFilter, number> = {
     all: orders.length,
     new: newCount,
@@ -455,12 +477,16 @@ export default function AdminPage() {
 
   const filteredOrders = useMemo(
     () =>
-      orders.filter(
-        (order) =>
-          matchesSearch(order, searchQuery) &&
-          matchesStatusFilter(order, statusFilter)
-      ),
-    [orders, searchQuery, statusFilter]
+      orders.filter((order) => {
+        const searchOk = matchesSearch(order, searchQuery);
+        const statusOk = matchesStatusFilter(order, statusFilter);
+        const todayOk = todayOnly
+          ? order.status === "new" && isToday(order.created_at)
+          : true;
+
+        return searchOk && statusOk && todayOk;
+      }),
+    [orders, searchQuery, statusFilter, todayOnly]
   );
 
   const attentionOrders = useMemo(
@@ -525,10 +551,46 @@ export default function AdminPage() {
         </div>
 
         {!loading && (
+          <section className="sticky top-4 z-20 mb-6 rounded-3xl border border-white/10 bg-[#151617]/90 p-4 backdrop-blur">
+            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:flex-1">
+                <CounterCard label="Новые" value={newCount} tone="sky" />
+                <CounterCard label="В работе" value={activeCount} tone="amber" />
+                <CounterCard
+                  label="Требуют внимания"
+                  value={attentionCount}
+                  tone="red"
+                />
+                <CounterCard
+                  label="Завершенные"
+                  value={doneCount + cancelledCount}
+                  tone="emerald"
+                />
+                <CounterCard label="Всего" value={orders.length} tone="neutral" />
+              </div>
+
+              <div className="flex flex-col gap-3 lg:w-[260px]">
+                <RealtimeBadge status={realtimeStatus} />
+                <button
+                  onClick={handleManualRefresh}
+                  disabled={refreshing}
+                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {refreshing ? "Обновляем..." : "Обновить"}
+                </button>
+                <div className="text-xs text-white/45">
+                  Последняя синхронизация: {formatTime(lastSyncedAt)}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {!loading && (
           <>
             <section className="mb-6">
               <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-                <div className="grid gap-4 lg:grid-cols-[1fr_240px]">
+                <div className="grid gap-4 lg:grid-cols-[1fr_240px_240px]">
                   <div>
                     <label className="mb-2 block text-sm text-white/55">
                       Поиск по заказам
@@ -564,6 +626,23 @@ export default function AdminPage() {
                       ))}
                     </select>
                   </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm text-white/55">
+                      Быстрый фильтр
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setTodayOnly((prev) => !prev)}
+                      className={`w-full rounded-2xl border px-4 py-3 text-sm font-medium transition ${
+                        todayOnly
+                          ? "border-sky-400/30 bg-sky-400/10 text-sky-200"
+                          : "border-white/10 bg-[#1b1c1d] text-white/75 hover:bg-white/10"
+                      }`}
+                    >
+                      Только новые за сегодня ({newTodayCount})
+                    </button>
+                  </div>
                 </div>
               </div>
             </section>
@@ -597,48 +676,6 @@ export default function AdminPage() {
                     </button>
                   );
                 })}
-              </div>
-            </section>
-
-            <section className="sticky top-4 z-20 mb-8 rounded-3xl border border-white/10 bg-[#151617]/90 p-4 backdrop-blur">
-              <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:flex-1">
-                  <CounterCard label="Новые" value={newOrders.length} tone="sky" />
-                  <CounterCard
-                    label="В работе"
-                    value={activeOrders.length}
-                    tone="amber"
-                  />
-                  <CounterCard
-                    label="Требуют внимания"
-                    value={attentionOrders.length}
-                    tone="red"
-                  />
-                  <CounterCard
-                    label="Завершенные"
-                    value={finishedOrders.length}
-                    tone="emerald"
-                  />
-                  <CounterCard
-                    label="Всего найдено"
-                    value={filteredOrders.length}
-                    tone="neutral"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-3 lg:w-[260px]">
-                  <RealtimeBadge status={realtimeStatus} />
-                  <button
-                    onClick={handleManualRefresh}
-                    disabled={refreshing}
-                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {refreshing ? "Обновляем..." : "Обновить"}
-                  </button>
-                  <div className="text-xs text-white/45">
-                    Последняя синхронизация: {formatTime(lastSyncedAt)}
-                  </div>
-                </div>
               </div>
             </section>
           </>
