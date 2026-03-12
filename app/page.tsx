@@ -91,12 +91,15 @@ export default function Home() {
       <Header />
 
       <main>
-        <section className="relative overflow-hidden lg:h-[calc(100vh-72px)]">
+        <section className="relative overflow-hidden border-b border-white/10">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_35%)]" />
 
-          <div className="mx-auto grid max-w-7xl gap-8 px-6 py-12 lg:h-full lg:grid-cols-[0.82fr_1.18fr] lg:items-center lg:px-8 lg:py-6">
+          <div className="mx-auto grid max-w-7xl gap-8 px-6 py-12 lg:min-h-[calc(100vh-72px)] lg:grid-cols-[0.82fr_1.18fr] lg:items-center lg:px-8 lg:py-10">
             <HeroCopy />
-            <OrderCard {...orderCardProps} />
+
+            <div id="order" className="scroll-mt-24">
+              <OrderCard {...orderCardProps} />
+            </div>
           </div>
         </section>
 
@@ -109,8 +112,10 @@ export default function Home() {
         />
 
         <AudienceOfferSection />
-        <CtaSection />
+
         <FaqSection />
+
+        <CtaSection />
       </main>
 
       <Footer />
