@@ -137,7 +137,7 @@ export default function PricesSection({
                   {plan.description}
                 </p>
 
-                <div className="mt-6 space-y-3">
+                <div className="mt-6 space-y-3 min-h-[110px]">
                   {plan.points.map((point) => (
                     <div key={point} className="flex items-start gap-3">
                       <span
