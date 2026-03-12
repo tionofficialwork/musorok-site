@@ -36,6 +36,15 @@ const statusOptions: { value: OrderStatus; label: string }[] = [
   { value: "cancelled", label: "Отменён" },
 ];
 
+const statusPriority: Record<OrderStatus, number> = {
+  new: 0,
+  assigned: 1,
+  on_the_way: 2,
+  arrived: 3,
+  done: 4,
+  cancelled: 5,
+};
+
 function formatPhone(value: string | null) {
   if (!value) return "—";
 
@@ -95,6 +104,24 @@ function statusBadgeClass(status: string | null) {
     default:
       return "border-white/10 bg-white/5 text-white/70";
   }
+}
+
+function getOrderTime(value: string | null) {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function sortOrdersByPriority(list: OrderRow[]) {
+  return [...list].sort((a, b) => {
+    const aStatus = a.status ?? "new";
+    const bStatus = b.status ?? "new";
+
+    const priorityDiff = statusPriority[aStatus] - statusPriority[bStatus];
+    if (priorityDiff !== 0) return priorityDiff;
+
+    return getOrderTime(b.created_at) - getOrderTime(a.created_at);
+  });
 }
 
 async function copy(text: string | null) {
@@ -267,36 +294,43 @@ export default function AdminPage() {
 
   const attentionOrders = useMemo(
     () =>
-      orders.filter(
-        (order) =>
-          order.status === "new" ||
-          order.status === "assigned" ||
-          order.status === "on_the_way" ||
-          order.status === "arrived"
+      sortOrdersByPriority(
+        orders.filter(
+          (order) =>
+            order.status === "new" ||
+            order.status === "assigned" ||
+            order.status === "on_the_way" ||
+            order.status === "arrived"
+        )
       ),
     [orders]
   );
 
   const newOrders = useMemo(
-    () => orders.filter((order) => order.status === "new"),
+    () =>
+      sortOrdersByPriority(orders.filter((order) => order.status === "new")),
     [orders]
   );
 
   const activeOrders = useMemo(
     () =>
-      orders.filter(
-        (order) =>
-          order.status === "assigned" ||
-          order.status === "on_the_way" ||
-          order.status === "arrived"
+      sortOrdersByPriority(
+        orders.filter(
+          (order) =>
+            order.status === "assigned" ||
+            order.status === "on_the_way" ||
+            order.status === "arrived"
+        )
       ),
     [orders]
   );
 
   const finishedOrders = useMemo(
     () =>
-      orders.filter(
-        (order) => order.status === "done" || order.status === "cancelled"
+      sortOrdersByPriority(
+        orders.filter(
+          (order) => order.status === "done" || order.status === "cancelled"
+        )
       ),
     [orders]
   );
@@ -330,7 +364,7 @@ export default function AdminPage() {
                   ⚡ Требуют внимания
                 </h2>
                 <p className="mt-1 text-sm text-white/60">
-                  Все незавершённые заказы, по которым сейчас идёт работа.
+                  Все незавершённые заказы в приоритетном порядке.
                 </p>
               </div>
 
