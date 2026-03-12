@@ -342,19 +342,46 @@ export default function AdminPage() {
           ← Назад
         </Link>
 
-        <div className="mb-8 mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mb-6 mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-3xl font-black">Диспетчерская МусорОК</h1>
             <p className="mt-2 text-sm text-white/55">
               Живая панель заказов с realtime-обновлением.
             </p>
           </div>
-
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
-            Всего заказов:{" "}
-            <span className="font-bold text-white">{orders.length}</span>
-          </div>
         </div>
+
+        {!loading && (
+          <section className="sticky top-4 z-20 mb-8 rounded-3xl border border-white/10 bg-[#151617]/90 p-4 backdrop-blur">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <CounterCard
+                label="Новые"
+                value={newOrders.length}
+                tone="sky"
+              />
+              <CounterCard
+                label="В работе"
+                value={activeOrders.length}
+                tone="amber"
+              />
+              <CounterCard
+                label="Требуют внимания"
+                value={attentionOrders.length}
+                tone="red"
+              />
+              <CounterCard
+                label="Завершенные"
+                value={finishedOrders.length}
+                tone="emerald"
+              />
+              <CounterCard
+                label="Всего"
+                value={orders.length}
+                tone="neutral"
+              />
+            </div>
+          </section>
+        )}
 
         {!loading && attentionOrders.length > 0 && (
           <section className="mb-10 rounded-3xl border border-amber-400/20 bg-amber-400/5 p-5">
@@ -424,6 +451,34 @@ export default function AdminPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function CounterCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "sky" | "amber" | "red" | "emerald" | "neutral";
+}) {
+  const toneClass =
+    tone === "sky"
+      ? "border-sky-400/20 bg-sky-400/10 text-sky-200"
+      : tone === "amber"
+      ? "border-amber-400/20 bg-amber-400/10 text-amber-200"
+      : tone === "red"
+      ? "border-red-400/20 bg-red-400/10 text-red-200"
+      : tone === "emerald"
+      ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
+      : "border-white/10 bg-white/5 text-white";
+
+  return (
+    <div className={`rounded-2xl border p-4 ${toneClass}`}>
+      <p className="text-xs uppercase tracking-[0.14em] opacity-70">{label}</p>
+      <p className="mt-2 text-2xl font-black">{value}</p>
+    </div>
   );
 }
 
