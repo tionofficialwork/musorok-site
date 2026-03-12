@@ -63,13 +63,16 @@ export default function OrderCard(props: OrderCardProps) {
   const goToStepTwo = () => props.setOrderStep(2);
   const goToStepThree = () => props.setOrderStep(3);
 
+  const showTrustBlock =
+    props.submitStatus !== "success" && props.orderStep === 1;
+
   return (
     <div className="relative lg:flex lg:justify-end">
       <div className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-3 shadow-2xl shadow-black/30 lg:max-h-[calc(100vh-120px)] lg:w-[min(100%,680px)] lg:overflow-hidden lg:p-4">
         <div className="rounded-[1.75rem] border border-[#2c3807]/40 bg-[#1a2105] p-3 lg:h-full lg:overflow-hidden lg:p-4">
           <div className="mt-1 rounded-3xl border border-white/10 bg-[#17181a] p-3 lg:h-full lg:overflow-y-auto lg:p-4">
             <div className="space-y-3">
-              {props.submitStatus !== "success" && (
+              {showTrustBlock && (
                 <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="inline-flex items-center rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold text-emerald-300">
