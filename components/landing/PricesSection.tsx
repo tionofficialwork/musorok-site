@@ -100,7 +100,7 @@ export default function PricesSection({
             return (
               <div
                 key={plan.id}
-                className={`rounded-3xl border p-6 sm:p-7 ${
+                className={`flex h-full flex-col rounded-3xl border p-6 sm:p-7 ${
                   isSelected
                     ? "border-emerald-400/40 bg-emerald-400/[0.10] shadow-[0_0_0_1px_rgba(52,211,153,0.10)]"
                     : plan.accent
@@ -143,7 +143,7 @@ export default function PricesSection({
                 <button
                   type="button"
                   onClick={() => handleSelect(plan.id)}
-                  className={`mt-7 inline-flex w-full items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold transition ${
+                  className={`mt-auto inline-flex w-full items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold transition ${
                     isSelected
                       ? "bg-white text-black hover:bg-white/90"
                       : plan.accent
