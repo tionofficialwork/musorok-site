@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
@@ -78,6 +78,25 @@ function statusLabel(status: string | null) {
   }
 }
 
+function statusBadgeClass(status: string | null) {
+  switch (status) {
+    case "new":
+      return "border-sky-400/30 bg-sky-400/10 text-sky-200";
+    case "assigned":
+      return "border-violet-400/30 bg-violet-400/10 text-violet-200";
+    case "on_the_way":
+      return "border-amber-400/30 bg-amber-400/10 text-amber-200";
+    case "arrived":
+      return "border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-200";
+    case "done":
+      return "border-emerald-400/30 bg-emerald-400/10 text-emerald-200";
+    case "cancelled":
+      return "border-red-400/30 bg-red-400/10 text-red-200";
+    default:
+      return "border-white/10 bg-white/5 text-white/70";
+  }
+}
+
 async function copy(text: string | null) {
   if (!text) return;
 
@@ -132,6 +151,8 @@ export default function AdminPage() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [newOrderIds, setNewOrderIds] = useState<string[]>([]);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const hasLoadedInitialOrdersRef = useRef(false);
 
@@ -224,6 +245,8 @@ export default function AdminPage() {
   }, []);
 
   async function changeStatus(id: string, status: OrderStatus) {
+    setUpdatingOrderId(id);
+
     const { error } = await supabase
       .from("orders")
       .update({ status })
@@ -231,25 +254,51 @@ export default function AdminPage() {
 
     if (error) {
       console.error("Не удалось обновить статус:", error.message);
+      setUpdatingOrderId(null);
       return;
     }
 
     setOrders((prev) =>
       prev.map((order) => (order.id === id ? { ...order, status } : order))
     );
+
+    setUpdatingOrderId(null);
   }
 
-  const newOrders = orders.filter((order) => order.status === "new");
-
-  const activeOrders = orders.filter(
-    (order) =>
-      order.status === "assigned" ||
-      order.status === "on_the_way" ||
-      order.status === "arrived"
+  const attentionOrders = useMemo(
+    () =>
+      orders.filter(
+        (order) =>
+          order.status === "new" ||
+          order.status === "assigned" ||
+          order.status === "on_the_way" ||
+          order.status === "arrived"
+      ),
+    [orders]
   );
 
-  const finishedOrders = orders.filter(
-    (order) => order.status === "done" || order.status === "cancelled"
+  const newOrders = useMemo(
+    () => orders.filter((order) => order.status === "new"),
+    [orders]
+  );
+
+  const activeOrders = useMemo(
+    () =>
+      orders.filter(
+        (order) =>
+          order.status === "assigned" ||
+          order.status === "on_the_way" ||
+          order.status === "arrived"
+      ),
+    [orders]
+  );
+
+  const finishedOrders = useMemo(
+    () =>
+      orders.filter(
+        (order) => order.status === "done" || order.status === "cancelled"
+      ),
+    [orders]
   );
 
   return (
@@ -268,9 +317,39 @@ export default function AdminPage() {
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
-            Всего заказов: <span className="font-bold text-white">{orders.length}</span>
+            Всего заказов:{" "}
+            <span className="font-bold text-white">{orders.length}</span>
           </div>
         </div>
+
+        {!loading && attentionOrders.length > 0 && (
+          <section className="mb-10 rounded-3xl border border-amber-400/20 bg-amber-400/5 p-5">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-amber-200">
+                  ⚡ Требуют внимания
+                </h2>
+                <p className="mt-1 text-sm text-white/60">
+                  Все незавершённые заказы, по которым сейчас идёт работа.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-amber-400/20 bg-black/20 px-4 py-2 text-sm text-amber-100">
+                Активных: {attentionOrders.length}
+              </div>
+            </div>
+
+            <div className="grid gap-4">
+              {attentionOrders.map((order) => (
+                <CompactAttentionCard
+                  key={order.id}
+                  order={order}
+                  isHighlighted={newOrderIds.includes(order.id)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
 
         {loading ? (
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-white/60">
@@ -283,6 +362,7 @@ export default function AdminPage() {
               orders={newOrders}
               changeStatus={changeStatus}
               newOrderIds={newOrderIds}
+              updatingOrderId={updatingOrderId}
             />
 
             <Section
@@ -290,6 +370,7 @@ export default function AdminPage() {
               orders={activeOrders}
               changeStatus={changeStatus}
               newOrderIds={newOrderIds}
+              updatingOrderId={updatingOrderId}
             />
 
             <Section
@@ -297,6 +378,7 @@ export default function AdminPage() {
               orders={finishedOrders}
               changeStatus={changeStatus}
               newOrderIds={newOrderIds}
+              updatingOrderId={updatingOrderId}
             />
 
             {orders.length === 0 && (
@@ -311,16 +393,76 @@ export default function AdminPage() {
   );
 }
 
+function CompactAttentionCard({
+  order,
+  isHighlighted,
+}: {
+  order: OrderRow;
+  isHighlighted: boolean;
+}) {
+  return (
+    <article
+      className={`rounded-2xl border p-4 transition ${
+        isHighlighted
+          ? "border-emerald-400/50 bg-emerald-400/10"
+          : "border-white/10 bg-black/20"
+      }`}
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-semibold text-white">
+              {order.package_label || "Без тарифа"}
+            </p>
+
+            <span
+              className={`rounded-full border px-3 py-1 text-xs ${statusBadgeClass(
+                order.status
+              )}`}
+            >
+              {statusLabel(order.status)}
+            </span>
+
+            {isHighlighted && (
+              <span className="rounded-full border border-emerald-400/40 bg-emerald-400/15 px-3 py-1 text-xs text-emerald-200">
+                Новый заказ
+              </span>
+            )}
+          </div>
+
+          <p className="mt-2 truncate text-sm text-white/60">
+            {order.address || "Адрес не указан"}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2 text-xs text-white/70">
+          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+            {formatPhone(order.phone)}
+          </span>
+          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+            {order.total ?? 0} ₽
+          </span>
+          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+            {formatDate(order.created_at)}
+          </span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function Section({
   title,
   orders,
   changeStatus,
   newOrderIds,
+  updatingOrderId,
 }: {
   title: string;
   orders: OrderRow[];
   changeStatus: (id: string, status: OrderStatus) => void;
   newOrderIds: string[];
+  updatingOrderId: string | null;
 }) {
   if (!orders.length) return null;
 
@@ -331,6 +473,7 @@ function Section({
       <div className="grid gap-4">
         {orders.map((order) => {
           const isNewlyHighlighted = newOrderIds.includes(order.id);
+          const isUpdating = updatingOrderId === order.id;
 
           return (
             <article
@@ -358,7 +501,11 @@ function Section({
                     </span>
                   )}
 
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70">
+                  <span
+                    className={`rounded-full border px-3 py-1 text-xs ${statusBadgeClass(
+                      order.status
+                    )}`}
+                  >
                     {statusLabel(order.status)}
                   </span>
 
@@ -447,10 +594,11 @@ function Section({
 
               <select
                 value={order.status ?? "new"}
+                disabled={isUpdating}
                 onChange={(e) =>
                   changeStatus(order.id, e.target.value as OrderStatus)
                 }
-                className="w-[220px] rounded-lg border border-white/10 bg-[#1b1c1d] px-3 py-2 text-sm text-white outline-none"
+                className="w-[220px] rounded-lg border border-white/10 bg-[#1b1c1d] px-3 py-2 text-sm text-white outline-none disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {statusOptions.map((status) => (
                   <option
