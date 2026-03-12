@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
@@ -16,17 +16,13 @@ type OrderRow = {
   id: string;
   status: OrderStatus | null;
   address: string | null;
-  package_id: string | null;
   package_label: string | null;
-  package_price: number | null;
   apartment: string | null;
   entrance: string | null;
   comment: string | null;
   leave_at_door: boolean | null;
   phone: string | null;
-  should_call: boolean | null;
   payment_method: string | null;
-  tip: number | null;
   total: number | null;
   created_at: string | null;
 };
@@ -44,23 +40,11 @@ function formatPhone(value: string | null) {
   if (!value) return "—";
 
   const digits = value.replace(/\D/g, "");
-  if (digits.length < 11) return value;
 
   return `+7 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(
     7,
     9
   )}-${digits.slice(9, 11)}`;
-}
-
-function formatDate(value: string | null) {
-  if (!value) return "—";
-
-  const date = new Date(value);
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(date);
 }
 
 function statusLabel(status: string | null) {
@@ -82,390 +66,196 @@ function statusLabel(status: string | null) {
   }
 }
 
-function statusBadgeClass(status: string | null) {
-  switch (status) {
-    case "new":
-      return "border-sky-400/30 bg-sky-400/10 text-sky-200";
-    case "assigned":
-      return "border-violet-400/30 bg-violet-400/10 text-violet-200";
-    case "on_the_way":
-      return "border-amber-400/30 bg-amber-400/10 text-amber-200";
-    case "arrived":
-      return "border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-200";
-    case "done":
-      return "border-emerald-400/30 bg-emerald-400/10 text-emerald-200";
-    case "cancelled":
-      return "border-red-400/30 bg-red-400/10 text-red-200";
-    default:
-      return "border-white/10 bg-white/5 text-white/70";
-  }
-}
-
-async function copyToClipboard(text: string | null) {
+async function copy(text: string | null) {
   if (!text) return;
-
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch {
-    console.error("Не удалось скопировать адрес");
-  }
+  await navigator.clipboard.writeText(text);
 }
 
 export default function AdminPage() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
   useEffect(() => {
-    let ignore = false;
-
-    async function loadOrders() {
-      setLoading(true);
-      setErrorMessage("");
-
-      const { data, error } = await supabase
-        .from("orders")
-        .select(
-          "id,status,address,package_id,package_label,package_price,apartment,entrance,comment,leave_at_door,phone,should_call,payment_method,tip,total,created_at"
-        )
-        .order("created_at", { ascending: false });
-
-      if (ignore) return;
-
-      if (error) {
-        setErrorMessage(
-          "Не удалось загрузить заказы. Проверь select policy для таблицы orders."
-        );
-        setOrders([]);
-        setLoading(false);
-        return;
-      }
-
-      setOrders((data ?? []) as OrderRow[]);
-      setLoading(false);
-    }
-
     loadOrders();
 
     const channel = supabase
-      .channel("orders-realtime")
+      .channel("orders")
       .on(
         "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "orders",
-        },
+        { event: "INSERT", schema: "public", table: "orders" },
         async (payload) => {
-          const orderId = payload.new.id;
+          const id = payload.new.id;
 
           const { data } = await supabase
             .from("orders")
-            .select(
-              "id,status,address,package_id,package_label,package_price,apartment,entrance,comment,leave_at_door,phone,should_call,payment_method,tip,total,created_at"
-            )
-            .eq("id", orderId)
+            .select("*")
+            .eq("id", id)
             .single();
 
           if (!data) return;
 
-          setOrders((prev) => {
-            const exists = prev.some((order) => order.id === data.id);
-            if (exists) return prev;
-            return [data as OrderRow, ...prev];
-          });
+          setOrders((prev) => [data as OrderRow, ...prev]);
         }
       )
       .on(
         "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "orders",
-        },
+        { event: "UPDATE", schema: "public", table: "orders" },
         (payload) => {
-          const updatedOrder = payload.new as OrderRow;
+          const updated = payload.new as OrderRow;
 
           setOrders((prev) =>
-            prev.map((order) =>
-              order.id === updatedOrder.id ? updatedOrder : order
-            )
+            prev.map((o) => (o.id === updated.id ? updated : o))
           );
         }
       )
       .subscribe();
 
     return () => {
-      ignore = true;
       supabase.removeChannel(channel);
     };
   }, []);
 
-  const filteredOrders = useMemo(() => {
-    if (statusFilter === "all") return orders;
-    return orders.filter((order) => order.status === statusFilter);
-  }, [orders, statusFilter]);
-
-  const handleStatusChange = async (
-    orderId: string,
-    nextStatus: OrderStatus
-  ) => {
-    setUpdatingOrderId(orderId);
-    setErrorMessage("");
-
-    const { error } = await supabase
+  async function loadOrders() {
+    const { data } = await supabase
       .from("orders")
-      .update({ status: nextStatus })
-      .eq("id", orderId);
+      .select("*")
+      .order("created_at", { ascending: false });
 
-    if (error) {
-      setErrorMessage(
-        "Не удалось обновить статус. Проверь update policy и тип поля status в таблице orders."
-      );
-      setUpdatingOrderId(null);
-      return;
-    }
+    setOrders((data ?? []) as OrderRow[]);
+  }
+
+  async function changeStatus(id: string, status: OrderStatus) {
+    await supabase.from("orders").update({ status }).eq("id", id);
 
     setOrders((prev) =>
-      prev.map((order) =>
-        order.id === orderId ? { ...order, status: nextStatus } : order
-      )
+      prev.map((o) => (o.id === id ? { ...o, status } : o))
     );
+  }
 
-    setUpdatingOrderId(null);
-  };
+  const newOrders = orders.filter((o) => o.status === "new");
+
+  const activeOrders = orders.filter(
+    (o) =>
+      o.status === "assigned" ||
+      o.status === "on_the_way" ||
+      o.status === "arrived"
+  );
+
+  const finishedOrders = orders.filter(
+    (o) => o.status === "done" || o.status === "cancelled"
+  );
 
   return (
-    <main className="min-h-screen bg-[#0f1011] px-6 py-8 text-white lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <Link
-              href="/"
-              className="text-sm text-white/45 transition hover:text-white/75"
-            >
-              ← Назад на сайт
-            </Link>
+    <main className="min-h-screen bg-[#0f1011] text-white px-6 py-8">
+      <div className="max-w-6xl mx-auto">
 
-            <h1 className="mt-3 text-3xl font-black">Админка заказов</h1>
+        <Link href="/" className="text-sm text-white/40 hover:text-white/70">
+          ← Назад
+        </Link>
 
-            <p className="mt-2 text-sm text-white/55">
-              Живая операционная панель для контроля заявок.
-            </p>
-          </div>
+        <h1 className="text-3xl font-black mt-4 mb-8">
+          Диспетчерская МусорОК
+        </h1>
 
-          <div className="w-full sm:w-[240px]">
-            <label className="mb-2 block text-sm text-white/55">Фильтр по статусу</label>
+        <Section title="🔥 Новые заказы" orders={newOrders} changeStatus={changeStatus} />
+
+        <Section title="🚚 В работе" orders={activeOrders} changeStatus={changeStatus} />
+
+        <Section title="✅ Завершенные" orders={finishedOrders} changeStatus={changeStatus} />
+
+      </div>
+    </main>
+  );
+}
+
+function Section({
+  title,
+  orders,
+  changeStatus,
+}: {
+  title: string;
+  orders: OrderRow[];
+  changeStatus: (id: string, status: OrderStatus) => void;
+}) {
+  if (!orders.length) return null;
+
+  return (
+    <div className="mb-10">
+      <h2 className="text-xl font-bold mb-4">{title}</h2>
+
+      <div className="grid gap-4">
+        {orders.map((order) => (
+          <article
+            key={order.id}
+            className="bg-white/5 border border-white/10 rounded-2xl p-5"
+          >
+            <div className="flex justify-between mb-3">
+
+              <div>
+                <p className="font-bold">{order.package_label}</p>
+                <p className="text-white/60 text-sm">{order.address}</p>
+              </div>
+
+              <span className="text-xs text-white/50">
+                {statusLabel(order.status)}
+              </span>
+
+            </div>
+
+            <div className="text-sm text-white/70 mb-4">
+              {formatPhone(order.phone)} • {order.total} ₽
+            </div>
+
+            <div className="flex flex-wrap gap-2 mb-4">
+
+              {order.phone && (
+                <a
+                  href={`tel:${order.phone}`}
+                  className="px-3 py-2 text-xs rounded-lg bg-white/10 hover:bg-white/20"
+                >
+                  📞 Позвонить
+                </a>
+              )}
+
+              {order.address && (
+                <a
+                  target="_blank"
+                  href={`https://yandex.ru/maps/?text=${encodeURIComponent(
+                    order.address
+                  )}`}
+                  className="px-3 py-2 text-xs rounded-lg bg-white/10 hover:bg-white/20"
+                >
+                  🗺 Маршрут
+                </a>
+              )}
+
+              {order.address && (
+                <button
+                  onClick={() => copy(order.address)}
+                  className="px-3 py-2 text-xs rounded-lg bg-white/10 hover:bg-white/20"
+                >
+                  📋 Копировать
+                </button>
+              )}
+
+            </div>
+
             <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition focus:border-white/25"
+              value={order.status ?? "new"}
+              onChange={(e) =>
+                changeStatus(order.id, e.target.value as OrderStatus)
+              }
+              className="bg-[#1b1c1d] border border-white/10 rounded-lg px-3 py-2 text-sm w-[200px]"
             >
-              <option value="all">Все</option>
-              {statusOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+              {statusOptions.map((s) => (
+                <option key={s.value} value={s.value} className="bg-[#1b1c1d]">
+                  {s.label}
                 </option>
               ))}
             </select>
-          </div>
-        </div>
 
-        <div className="mb-4 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-            <p className="text-sm text-white/50">Всего заказов</p>
-            <p className="mt-2 text-3xl font-black">{orders.length}</p>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-            <p className="text-sm text-white/50">Новых</p>
-            <p className="mt-2 text-3xl font-black">
-              {orders.filter((order) => order.status === "new").length}
-            </p>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-            <p className="text-sm text-white/50">После фильтра</p>
-            <p className="mt-2 text-3xl font-black">{filteredOrders.length}</p>
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white/60">
-            Загружаем заказы...
-          </div>
-        ) : errorMessage ? (
-          <div className="rounded-3xl border border-red-500/30 bg-red-500/10 p-6 text-red-200">
-            {errorMessage}
-          </div>
-        ) : filteredOrders.length === 0 ? (
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white/60">
-            Заказов пока нет.
-          </div>
-        ) : (
-          <div className="grid gap-4">
-            {filteredOrders.map((order) => {
-              const isUpdating = updatingOrderId === order.id;
-
-              return (
-                <article
-                  key={order.id}
-                  className="rounded-3xl border border-white/10 bg-white/5 p-5"
-                >
-                  <div className="flex flex-col gap-3 border-b border-white/10 pb-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-white/40">
-                        Заказ
-                      </p>
-
-                      <h2 className="mt-2 text-lg font-bold">
-                        {order.package_label || "Без тарифа"}
-                      </h2>
-
-                      <p className="mt-1 text-sm text-white/55">
-                        {order.address || "Адрес не указан"}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <span
-                        className={`rounded-full border px-3 py-1 text-xs ${statusBadgeClass(
-                          order.status
-                        )}`}
-                      >
-                        {statusLabel(order.status)}
-                      </span>
-
-                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70">
-                        {formatDate(order.created_at)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 grid gap-3 text-sm text-white/70 sm:grid-cols-2 lg:grid-cols-4">
-                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                      <p className="text-xs text-white/40">Телефон</p>
-                      <p className="mt-1 font-medium text-white">
-                        {formatPhone(order.phone)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                      <p className="text-xs text-white/40">К оплате</p>
-                      <p className="mt-1 font-medium text-white">
-                        {order.total ?? 0} ₽
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                      <p className="text-xs text-white/40">
-                        Квартира / подъезд
-                      </p>
-                      <p className="mt-1 font-medium text-white">
-                        {order.apartment || "—"} / {order.entrance || "—"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                      <p className="text-xs text-white/40">Оплата</p>
-                      <p className="mt-1 font-medium text-white">
-                        {order.payment_method || "—"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 grid gap-3 text-sm text-white/60 lg:grid-cols-3">
-                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                      <p className="text-xs text-white/40">Комментарий</p>
-                      <p className="mt-1">{order.comment || "Нет комментария"}</p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                      <p className="text-xs text-white/40">Оставить у двери</p>
-                      <p className="mt-1">
-                        {order.leave_at_door ? "Да" : "Нет"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                      <p className="text-xs text-white/40">Нужно позвонить</p>
-                      <p className="mt-1">
-                        {order.should_call ? "Да" : "Нет"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {order.phone && (
-                      <a
-                        href={`tel:${order.phone}`}
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs transition hover:bg-white/10"
-                      >
-                        📞 Позвонить
-                      </a>
-                    )}
-
-                    {order.address && (
-                      <a
-                        target="_blank"
-                        rel="noreferrer"
-                        href={`https://yandex.ru/maps/?text=${encodeURIComponent(
-                          order.address
-                        )}`}
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs transition hover:bg-white/10"
-                      >
-                        🗺 Маршрут
-                      </a>
-                    )}
-
-                    {order.address && (
-                      <button
-                        onClick={() => copyToClipboard(order.address)}
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs transition hover:bg-white/10"
-                      >
-                        📋 Копировать адрес
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                      <div>
-                        <p className="text-xs text-white/40">Изменить статус</p>
-                        <p className="mt-1 text-sm text-white/55">
-                          Управление операционным этапом заказа.
-                        </p>
-                      </div>
-
-                      <div className="w-full sm:w-[240px]">
-                        <select
-                          value={order.status ?? "new"}
-                          disabled={isUpdating}
-                          onChange={(e) =>
-                            handleStatusChange(
-                              order.id,
-                              e.target.value as OrderStatus
-                            )
-                          }
-                          className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition focus:border-white/25 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {statusOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
+          </article>
+        ))}
       </div>
-    </main>
+    </div>
   );
 }
