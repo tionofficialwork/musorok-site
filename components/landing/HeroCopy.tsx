@@ -24,8 +24,8 @@ export default function HeroCopy() {
 
       <p className="mt-5 max-w-xl text-base leading-7 text-white/70 sm:text-lg">
         МусорОК — сервис, который помогает быстро заказать вынос бытового
-        мусора из квартиры, дома или офиса. Оставляете заявку на сайте —
-        курьер забирает пакеты у двери.
+        мусора из квартиры, дома или офиса в Краснодаре. Оставляете заявку на
+        сайте — курьер забирает пакеты у двери.
       </p>
 
       <div className="mt-6 grid max-w-xl gap-3 sm:grid-cols-2">
@@ -74,6 +74,47 @@ export default function HeroCopy() {
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-emerald-400" />
           Подходит для первого тестового заказа
+        </div>
+      </div>
+
+      <div className="mt-8 grid max-w-xl gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-sm">
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-white/45">
+            Гео
+          </div>
+          <div className="mt-2 text-sm font-semibold text-white">
+            Работаем в Краснодаре
+          </div>
+          <p className="mt-1 text-sm leading-6 text-white/60">
+            Локальный сервис с понятной зоной запуска без ощущения “непонятно
+            где и как это вообще работает”.
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-sm">
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-white/45">
+            Цена
+          </div>
+          <div className="mt-2 text-sm font-semibold text-white">
+            Стоимость видна заранее
+          </div>
+          <p className="mt-1 text-sm leading-6 text-white/60">
+            Пользователь сразу видит пакет и цену, а не оставляет заявку
+            “вслепую”.
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-sm">
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-white/45">
+            Первый заказ
+          </div>
+          <div className="mt-2 text-sm font-semibold text-white">
+            Удобно попробовать
+          </div>
+          <p className="mt-1 text-sm leading-6 text-white/60">
+            Не нужно разбираться долго: открыл сайт, выбрал пакет, оставил
+            заявку.
+          </p>
         </div>
       </div>
     </div>
