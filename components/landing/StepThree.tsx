@@ -29,6 +29,19 @@ export default function StepThree({
 
   return (
     <div className="space-y-3">
+      <div className="mb-1">
+        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/40">
+          Шаг 3 из 3
+        </div>
+        <h3 className="mt-2 text-xl font-semibold text-white sm:text-2xl">
+          Подтвердите заказ
+        </h3>
+        <p className="mt-2 max-w-xl text-sm leading-6 text-white/60">
+          Проверьте способ оплаты, чаевые и итоговую сумму. После этого заказ
+          будет отправлен в систему.
+        </p>
+      </div>
+
       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
         <p className="text-sm text-white/50">Способ оплаты</p>
 
@@ -48,6 +61,10 @@ export default function StepThree({
             </button>
           ))}
         </div>
+
+        <p className="mt-3 text-xs leading-5 text-white/40">
+          Выберите удобный способ оплаты перед оформлением заказа.
+        </p>
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -82,8 +99,12 @@ export default function StepThree({
           }}
           placeholder="Или введите свою сумму"
           inputMode="numeric"
-          className="mt-3 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition placeholder:text-white/25 focus:border-white/25"
+          className="mt-3 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/25 focus:border-white/25"
         />
+
+        <p className="mt-3 text-xs leading-5 text-white/40">
+          Чаевые необязательны — можно оставить 0 ₽.
+        </p>
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -112,10 +133,22 @@ export default function StepThree({
         </div>
 
         <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
-          <span className="text-base font-semibold">К оплате</span>
-          <span className="text-2xl font-black">{total} ₽</span>
+          <span className="text-base font-semibold text-white">К оплате</span>
+          <span className="text-2xl font-black text-white">{total} ₽</span>
         </div>
+
+        <p className="mt-3 text-xs leading-5 text-white/40">
+          Итоговая сумма видна заранее — без скрытых доплат на последнем шаге.
+        </p>
       </div>
+
+      {!hasError ? (
+        <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.08] px-4 py-3">
+          <p className="text-sm text-emerald-200">
+            Вы уже на финальном шаге. После нажатия кнопки заказ будет оформлен.
+          </p>
+        </div>
+      ) : null}
 
       {hasError ? (
         <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3">
@@ -131,7 +164,7 @@ export default function StepThree({
           className={`w-full rounded-2xl border px-5 py-3.5 font-bold transition ${
             isSubmitting
               ? "cursor-not-allowed border-white/5 bg-white/5 text-white/35"
-              : "border-white/10 bg-white/5 hover:bg-white/10"
+              : "border-white/10 bg-white/5 text-white hover:bg-white/10"
           }`}
         >
           Назад
@@ -147,7 +180,7 @@ export default function StepThree({
               : "bg-white text-black hover:scale-[1.01]"
           }`}
         >
-          {isSubmitting ? "Отправляем..." : "Оформить заказ"}
+          {isSubmitting ? "Отправляем заказ..." : "Подтвердить и оформить"}
         </button>
       </div>
     </div>
