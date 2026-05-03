@@ -85,13 +85,33 @@ export default function Home() {
             </p>
           </div>
 
+          <div className="relative z-20 mt-8 flex items-end justify-center gap-0 min-[390px]:mt-9 min-[520px]:hidden">
+            <Image
+              src="/mobile-character.png"
+              alt=""
+              width={1024}
+              height={1536}
+              priority
+              className="pointer-events-none h-auto w-[150px] select-none drop-shadow-[0_18px_28px_rgba(0,0,0,0.13)] min-[390px]:w-[170px]"
+            />
+
+            <Image
+              src="/trash-bag.png"
+              alt=""
+              width={728}
+              height={880}
+              priority
+              className="pointer-events-none mb-3 h-auto w-[60px] -translate-x-1 select-none drop-shadow-[0_12px_18px_rgba(0,0,0,0.12)] min-[390px]:mb-4 min-[390px]:w-[70px]"
+            />
+          </div>
+
           <Image
             src="/launch-character.png"
             alt=""
             width={1024}
             height={1536}
             priority
-            className="pointer-events-none relative z-20 mx-auto mt-8 h-auto w-[170px] select-none drop-shadow-[0_18px_28px_rgba(0,0,0,0.14)] min-[390px]:mt-9 min-[390px]:w-[194px] min-[520px]:absolute min-[520px]:left-[calc(50%+86px)] min-[520px]:top-1/2 min-[520px]:mt-0 min-[520px]:w-[170px] min-[520px]:-translate-y-[28%] sm:left-[calc(50%+128px)] sm:w-[220px] md:left-[calc(50%+168px)] md:w-[260px] lg:left-[calc(50%+198px)] lg:w-[310px]"
+            className="pointer-events-none z-20 mx-auto hidden h-auto select-none drop-shadow-[0_18px_28px_rgba(0,0,0,0.14)] min-[520px]:absolute min-[520px]:left-[calc(50%+86px)] min-[520px]:top-1/2 min-[520px]:block min-[520px]:w-[170px] min-[520px]:-translate-y-[28%] sm:left-[calc(50%+128px)] sm:w-[220px] md:left-[calc(50%+168px)] md:w-[260px] lg:left-[calc(50%+198px)] lg:w-[310px]"
           />
 
           <Image
@@ -100,7 +120,7 @@ export default function Home() {
             width={728}
             height={880}
             priority
-            className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-auto w-[58px] translate-x-[62px] translate-y-[118%] select-none drop-shadow-[0_12px_18px_rgba(0,0,0,0.12)] min-[390px]:w-[66px] min-[390px]:translate-x-[78px] min-[390px]:translate-y-[126%] min-[520px]:left-[calc(50%+216px)] min-[520px]:w-[62px] min-[520px]:translate-x-0 min-[520px]:translate-y-[95%] sm:left-[calc(50%+280px)] sm:w-[76px] md:left-[calc(50%+336px)] md:w-[88px] lg:left-[calc(50%+408px)] lg:w-[108px]"
+            className="pointer-events-none absolute left-[calc(50%+216px)] top-1/2 z-10 hidden h-auto w-[62px] translate-y-[95%] select-none drop-shadow-[0_12px_18px_rgba(0,0,0,0.12)] min-[520px]:block sm:left-[calc(50%+280px)] sm:w-[76px] md:left-[calc(50%+336px)] md:w-[88px] lg:left-[calc(50%+408px)] lg:w-[108px]"
           />
         </div>
       </section>
