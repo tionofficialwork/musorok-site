@@ -101,7 +101,7 @@ export default function Home() {
               width={728}
               height={880}
               priority
-              className="pointer-events-none mb-3 h-auto w-[60px] -translate-x-1 select-none drop-shadow-[0_12px_18px_rgba(0,0,0,0.12)] min-[390px]:mb-4 min-[390px]:w-[70px]"
+              className="pointer-events-none mb-3 h-auto w-[60px] -translate-x-1 -ml-8 select-none drop-shadow-[0_12px_18px_rgba(0,0,0,0.12)] min-[390px]:mb-4 min-[390px]:-ml-10 min-[390px]:w-[70px]"
             />
           </div>
 
